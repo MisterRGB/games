@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mr. B&rsquo;s AI explorations, experiments and failures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --red: #e60012;            /* EB-style red */
+    --red-dark: #b3000e;
+    --black: #141414;
+    --yellow: #ffd500;
+    --white: #ffffff;
+    --grey: #f2f2f2;
+    --line: #000;
+  }
+
+  body {
+    font-family: 'Inter', Arial, sans-serif;
+    background: var(--black);
+    color: #fff;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== top red sale banner ===== */
+  .topbar {
+    position: relative; z-index: 1;
+    background: var(--red);
+    color: #fff;
+    text-align: center;
+    padding: .8rem 1rem;
+    font-weight: 900;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    font-size: .85rem;
+  }
+  .topbar b { color: var(--yellow); }
+  .topbar span { color: #fff; }
+
+  /* ===== EB-style logo header ===== */
+  .store {
+    position: relative; z-index: 1;
+    text-align: center;
+    padding: 2rem 1rem 1rem;
+    border-bottom: 6px solid var(--red);
+    background:
+      radial-gradient(500px 160px at 50% 0%, rgba(230,0,18,.18), transparent);
+  }
+  .store .brand {
+    font-family: 'Anton', sans-serif;
+    font-weight: 400;
+    font-size: clamp(2.4rem, 9vw, 4.6rem);
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: .01em;
+    color: #fff;
+    -webkit-text-stroke: 1px #000;
+    text-shadow: 3px 3px 0 #000;
+  }
+  .store .brand b { color: var(--yellow); }
+  .store .tag {
+    margin-top: .5rem;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.85);
+  }
+
+  /* ===== giant SALE sign ===== */
+  .sale-sign {
+    position: relative; z-index: 1;
+    text-align: center;
+    padding: 1.8rem 1rem 0;
+  }
+  .sale-sign .mega {
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(3.2rem, 14vw, 8rem);
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--yellow);
+    -webkit-text-stroke: 4px #000;
+    text-shadow: 6px 6px 0 var(--red);
+    display: inline-block;
+    transform: rotate(-3deg);
+    margin-bottom: .5rem;
+  }
+  .sale-sign .sub {
+    display: inline-block;
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(1.1rem, 4vw, 1.8rem);
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--red);
+    padding: .35rem 1.2rem;
+    transform: rotate(2deg);
+    box-shadow: 4px 4px 0 #000;
+    letter-spacing: .03em;
+  }
+  .sale-sign .fine {
+    margin-top: .8rem;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.6);
+  }
+
+  /* ===== shelf ===== */
+  .shelf {
+    position: relative; z-index: 1;
+    max-width: 1140px;
+    margin: 2.4rem auto 0;
+    padding: 0 1.1rem;
+  }
+  .shelf .racklabel {
+    font-family: 'Anton', sans-serif;
+    font-size: 1rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--yellow);
+    margin-bottom: 1.6rem;
+  }
+  .racklabel .slash { color: var(--red); }
+
+  .rack {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+    gap: 1rem 1.1rem;
+    align-items: end;
+  }
+
+  .boxwrap {
+    position: relative;
+    transition: transform .18s ease;
+  }
+  .boxwrap:hover { transform: translateY(-10px); }
+
+  /* ===== retail game box ===== */
+  .box {
+    position: relative;
+    display: block;
+    text-decoration: none;
+    color: #000;
+    background: var(--white);
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow: 0 0 0 2px rgba(255,255,255,.12), 0 16px 30px rgba(0,0,0,.6);
+    transition: box-shadow .18s ease;
+  }
+  .boxwrap:hover .box {
+    box-shadow: 0 0 0 2px rgba(255,255,255,.2), 0 26px 50px rgba(0,0,0,.7), 0 0 26px var(--glowc, transparent);
+  }
+
+  .art {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+  }
+  .art img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .art::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(115deg, transparent 32%, rgba(255,255,255,.28) 50%, transparent 68%);
+    transform: translateX(-130%);
+    transition: transform .55s ease;
+  }
+  .boxwrap:hover .art::after { transform: translateX(130%); }
+
+  /* sale price sticker - yellow circle */
+  .price-sticker {
+    position: absolute; top: -14px; right: -6px; z-index: 4;
+    width: 74px; height: 74px;
+    background: var(--yellow);
+    border: 3px solid var(--red);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    text-align: center;
+    transform: rotate(8deg);
+    box-shadow: 3px 3px 0 #000;
+  }
+  .price-sticker .was {
+    font-size: .78rem;
+    color: #000;
+    text-decoration: line-through;
+  }
+  .price-sticker .save {
+    font-size: .62rem;
+    font-weight: 900;
+    color: var(--red);
+    margin-top: .1rem;
+  }
+
+  .badge {
+    position: absolute; top: 8px; left: 8px; z-index: 2;
+    font-weight: 900;
+    font-size: .6rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--red);
+    padding: .16rem .4rem;
+    transform: rotate(-3deg);
+    box-shadow: 2px 2px 0 #000;
+  }
+  .badge.big { font-size: .72rem; font-family: 'Anton', sans-serif; }
+
+  .info {
+    padding: .8rem .8rem .9rem;
+    position: relative;
+    border-top: 3px solid var(--red);
+  }
+  .info .title {
+    font-family: 'Anton', sans-serif;
+    font-weight: 400;
+    font-size: 1.15rem;
+    line-height: 1.02;
+    color: #000;
+    text-transform: uppercase;
+    padding-right: 58px;
+  }
+  .info .meta {
+    margin-top: .3rem;
+    font-size: .64rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,.6);
+  }
+
+  /* ===== sale blurbbar under boxes ===== */
+  .blurbbar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: .8rem;
+    margin-top: 2rem;
+  }
+  .blurb {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .7rem 1rem;
+    background: rgba(255,255,255,.06);
+    border: 2px solid var(--red);
+    font-family: 'Anton', sans-serif;
+    font-size: .8rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #fff;
+  }
+  .blurb .big { color: var(--yellow); font-size: 1.1rem; }
+
+  .foot {
+    position: relative; z-index: 1;
+    text-align: center;
+    padding: 2.6rem 1rem 3rem;
+    font-size: .64rem;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.45);
+  }
+  .foot b { color: var(--yellow); }
+
+  @media (max-width: 640px) {
+    .rack { grid-template-columns: repeat(2, 1fr); gap: .9rem; }
+    .info .title { font-size: .95rem; }
+    .price-sticker { width: 62px; height: 62px; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- top red sale strip -->
+  <div class="topbar">
+    <b>MEGA SALE</b> &nbsp;|&nbsp; <span>EVERY GAME </span><b>FREE</b><span> &mdash; NO REFUNDS ON BAD IDEAS</span>
+  </div>
+
+  <!-- logo header -->
+  <header class="store">
+    <div class="brand">Mr.&nbsp;B&rsquo;s <b>Game&nbsp;Store</b></div>
+    <div class="tag">AI Explorations, Experiments and Failures</div>
+  </header>
+
+  <!-- giant sale sign -->
+  <div class="sale-sign">
+    <div class="mega">SALE</div>
+    <div class="sub">Up to 100% off everything</div>
+    <div class="fine">At Mr. B&rsquo;s AI Game Store &mdash; while stocks last</div>
+  </div>
+
+  <!-- shelf -->
+  <main class="shelf">
+    <div class="racklabel">Now on the shelf <span class="slash">///</span> Prompted into exisitence by Mr.B, all built by an AI</div>
+
+    <div class="rack">
+
+      <!-- Tilt -->
+      <div class="boxwrap">
+        <a class="box" style="--glowc:#4aa8ff" href="https://misterrgb.github.io/games/tilt.html">
+          <span class="price-sticker"><span><div class="was">$59.99</div><div class="save">100% OFF</div></span></span>
+          <div class="art"><img src="images/tilt.jpg" alt="Tilt screenshot"></div>
+          <span class="badge big">Bestseller</span>
+          <div class="info">
+            <div class="title">Tilt Collective</div>
+            <div class="meta">Balance &middot; Arcade</div>
+          </div>
+        </a>
+</div>
+
+      <!-- Biplane Crazy -->
+      <div class="boxwrap">
+        <a class="box" style="--glowc:#ff2d95" href="https://misterrgb.github.io/games/biplanecrazy.html">
+          <span class="price-sticker"><span><div class="was">$49.99</div><div class="save">100% OFF</div></span></span>
+          <div class="art"><img src="images/biplane.jpg" alt="Biplane Crazy screenshot"></div>
+          <span class="badge">Hot Right Now</span>
+          <div class="info">
+            <div class="title">Biplane Crazy</div>
+            <div class="meta">Flight &middot; Action</div>
+          </div>
+        </a>
+</div>
+
+      <!-- Even Flow -->
+      <div class="boxwrap">
+        <a class="box" style="--glowc:#49f0a8" href="https://misterrgb.github.io/games/evenflow.html">
+          <span class="price-sticker"><span><div class="was">$39.99</div><div class="save">100% OFF</div></span></span>
+          <div class="art"><img src="images/evenflow.jpg" alt="Even Flow screenshot"></div>
+          <span class="badge">Critic&rsquo;s Pick</span>
+          <div class="info">
+            <div class="title">Even Flow</div>
+            <div class="meta">Rhythm &middot; Chill</div>
+          </div>
+        </a>
+</div>
+
+      <!-- Pen Tool Hero -->
+      <div class="boxwrap">
+        <a class="box" style="--glowc:#ff7a2f" href="https://misterrgb.github.io/games/PenToolHero.html">
+          <span class="price-sticker"><span><div class="was">$29.99</div><div class="save">100% OFF</div></span></span>
+          <div class="art"><img src="images/pentoolhero.jpg" alt="Pen Tool Hero screenshot"></div>
+          <span class="badge">Cult Classic</span>
+          <div class="info">
+            <div class="title">Pen Tool Hero</div>
+            <div class="meta">Design &middot; Puzzle</div>
+          </div>
+        </a>
+</div>
+
+      <!-- Equilibrium -->
+      <div class="boxwrap">
+        <a class="box" style="--glowc:#a78bff" href="https://misterrgb.github.io/games/equilibrium.html">
+          <span class="price-sticker"><span><div class="was">$45.99</div><div class="save">100% OFF</div></span></span>
+          <div class="art"><img src="images/equilibrium.jpg" alt="Equilibrium screenshot"></div>
+          <span class="badge">Hidden Gem</span>
+          <div class="info">
+            <div class="title">Equilibrium</div>
+            <div class="meta">Physics &middot; Puzzle</div>
+          </div>
+        </a>
+</div>
+
+    </div>
+
+    <!-- blurbs -->
+    <div class="blurbbar">
+      <div class="blurb"><span class="big">&#9733;</span> 5 games, all 100% off</div>
+      <div class="blurb"><span class="big">&#9889;</span> No queues, no wraps, no box</div>
+      <div class="blurb"><span class="big">&#8594;</span> Click a box to start playing</div>
+    </div>
+  </main>
+
+  <footer class="foot">
+    Mr.&nbsp;B&rsquo;s <b>Game&nbsp;Store</b> &middot; ALL SALES ARE FINAL, NO BACKSIES.&middot; 2026
+  </footer>
+
+</body>
+</html>

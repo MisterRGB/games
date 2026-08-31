@@ -214,6 +214,13 @@
     box-shadow: 2px 2px 0 #000;
   }
   .badge.big { font-size: .72rem; font-family: 'Anton', sans-serif; }
+  .badge.easter {
+    position: absolute; top: 14px; left: 14px; z-index: 5;
+    text-decoration: none;
+    cursor: default;
+  }
+  .badge.easter::after { content: 'Bestseller'; }
+  .badge.easter:hover { background: var(--red); }
 
   .info {
     padding: .8rem .8rem .9rem;
@@ -310,12 +317,12 @@
         <a class="box" style="--glowc:#4aa8ff" href="https://misterrgb.github.io/games/tilt.html">
           <span class="price-sticker"><span><div class="was">$59.99</div><div class="save">100% OFF</div></span></span>
           <div class="art"><img src="images/tilt.jpg" alt="Tilt screenshot"></div>
-          <span class="badge big">Bestseller</span>
           <div class="info">
             <div class="title">Tilt Collective</div>
             <div class="meta">Balance &middot; Arcade</div>
           </div>
         </a>
+        <a class="badge big easter" href="https://misterrgb.github.io/games/tilt.html?host=true"></a>
 </div>
 
       <!-- Biplane Crazy -->

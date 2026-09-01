@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ILLUMINATE — 25 depths</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#06070b;
+    font-family:'Courier New',monospace;color:#cfd3da;user-select:none}
+  canvas{display:block;touch-action:none}
+  #lobby{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(5,6,10,.92);border:1px solid #2a2f3a;padding:28px 34px;
+    text-align:center;min-width:320px;z-index:5}
+  #lobby h1{margin:0 0 4px;letter-spacing:6px;font-size:22px;color:#ffe9c4}
+  #lobby p{font-size:11px;color:#7a8291;margin:6px 0 14px;line-height:1.6}
+  input,button{background:#0b0d12;border:1px solid #333a48;color:#cfd3da;
+    padding:9px 12px;font-family:inherit;font-size:14px;margin:3px;cursor:pointer}
+  button:hover{border-color:#8a93a6;color:#fff}
+  #hostPanel{margin-top:14px;border:1px solid #2a2f3a;padding:14px;min-width:280px}
+  #hpl{font-size:10px;color:#7a8291;letter-spacing:2px}
+  #hostCode{font-size:30px;letter-spacing:8px;color:#ffe9c4;margin:6px 0 2px}
+  #hostCount{font-size:11px;color:#8a93a6;margin-bottom:8px}
+  #hostInvite{font-size:10px;color:#565d6b;word-break:break-all;margin-bottom:6px}
+  #status{font-size:11px;color:#7a8291;margin-top:10px;min-height:14px}
+  #hud{position:absolute;top:12px;left:16px;right:16px;display:flex;
+    justify-content:space-between;font-size:12px;letter-spacing:1px;
+    color:#8a93a6;pointer-events:none;text-shadow:0 0 6px #000}
+  #hud b{color:#ffe9c4}
+  .bar{display:inline-block;width:70px;height:6px;border:1px solid #333a48;
+    vertical-align:middle;margin:0 6px}
+  .bar i{display:block;height:100%;width:0%;transition:width .2s}
+  #syncBar{background:#ffca7a}#hpBar{background:#7dff9a}
+  #hint{position:absolute;bottom:10px;width:100%;text-align:center;
+    font-size:11px;color:#565d6b;pointer-events:none;letter-spacing:1px}
+  #invRow{margin-top:6px;color:#565d6b;font-size:10px;letter-spacing:1px}
+  #invite{color:#8a93a6;cursor:pointer}
+  #invite:hover{color:#ffe9c4}
+  #bCopy{background:transparent;border:1px solid #2a2f3a;color:#8a93a6;
+    cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:1px;
+    margin-left:6px;padding:1px 8px}
+  #bCopy:hover{color:#ffe9c4;border-color:#ffe9c4}
+  #deadMsg{position:absolute;top:40%;width:100%;text-align:center;font-size:16px;
+    color:#ff6a5a;letter-spacing:3px;display:none;text-shadow:0 0 12px #000}
+  #winMsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-size:26px;letter-spacing:6px;color:#ffe9c4;display:none;text-align:center;
+    text-shadow:0 0 20px #000}
+  #logo{position:absolute;bottom:12px;right:16px;color:#3a4150;font-size:18px;
+    cursor:pointer;z-index:6;transition:color .2s}
+  #logo:hover{color:#ffe9c4}
+  #devPanel{position:absolute;bottom:40px;right:16px;background:rgba(5,6,10,.92);
+    border:1px solid #2a2f3a;padding:10px 12px;z-index:6;max-width:280px}
+  #devLbl{font-size:10px;color:#7a8291;letter-spacing:1px;margin-bottom:6px}
+  #devPanel input{padding:6px 8px;font-size:12px;margin:0}
+  #devErr{color:#ff6a5a;font-size:10px;min-height:12px;margin-top:4px}
+  .dot{display:inline-block;width:13px;height:13px;border-radius:50%;
+    border:1px solid #444;margin:2px;cursor:pointer;vertical-align:middle}
+  .dot:hover{border-color:#ffe9c4}
+  .dot.cur{background:#ffca7a;border-color:#ffca7a}
+  #revealWrap{display:block;margin-top:8px;font-size:10px;color:#8a93a6;
+    letter-spacing:1px;cursor:pointer}
+  #revealChk{vertical-align:middle;margin-right:6px}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="lobby">
+  <h1>ILLUMINATE</h1>
+  <p>25 depths · the dark is absolute · light is life<br>
+     water runs between the caves · bridges are the only way<br>
+     guardians guard the keys · light holds them still</p>
+  <div id="joinBox">
+    <input id="pname" placeholder="YOUR TAG" maxlength="10">
+    <input id="code" placeholder="ROOM CODE" maxlength="4" style="text-transform:uppercase">
+    <br>
+    <button id="bHost">CREATE GAME</button>
+    <button id="bJoin">JOIN</button>
+  </div>
+  <div id="hostPanel" class="hidden">
+    <div id="hpl">HOSTING · ROOM CODE</div>
+    <div id="hostCode">—</div>
+    <div id="hostCount">PLAYERS READY: 0</div>
+    <div id="hostInvite"></div>
+    <button id="bCopyH">COPY LINK</button>
+    <button id="bStart">START</button>
+  </div>
+  <div id="status">ready</div>
+</div>
+<div id="hud" class="hidden">
+  <div>ROOM <b id="hRoom"></b> · <b id="hCount">0</b> ALIVE · DEPTH <b id="hLvl">1</b>/25</div>
+  <div><b id="hKeys"></b> HP<span class="bar"><i id="hpBar"></i></span>
+     <span id="hDoor">DOOR: DARK</span>
+     <span class="bar"><i id="syncBar"></i></span>SYNC</div>
+  <div id="invRow" class="hidden"><span id="invite"></span><button id="bCopy">COPY LINK</button></div>
+</div>
+<div id="hint" class="hidden">WASD move · mouse aims · bridges cross water · light freezes guardians · shine ON the door to open it</div>
+<div id="deadMsg">YOU DIED — spectating until next depth</div>
+<div id="winMsg">ESCAPED INTO LIGHT<br><span style="font-size:12px;color:#8a93a6">all 25 depths cleared</span></div>
+<div id="logo" class="hidden">✦</div>
+<div id="devPanel" class="hidden">
+  <div id="devLock">
+    <div id="devLbl">DEV ACCESS</div>
+    <input id="devPass" type="password" placeholder="password" maxlength="16">
+    <button id="devUnlock">UNLOCK</button>
+    <div id="devErr"></div>
+  </div>
+  <div id="devTools" class="hidden">
+    <div id="devLbl">DEV · JUMP TO DEPTH</div>
+    <div id="devDots"></div>
+    <label id="revealWrap"><input type="checkbox" id="revealChk"> REVEAL CAVE LAYOUT</label>
+  </div>
+</div>
+<canvas id="cv"></canvas>
+
+<script>
+'use strict';
+const TAU=Math.PI*2;
+const clamp=(v,lo,hi)=>v<lo?lo:v>hi?hi:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;
+  let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;
+  return((t^t>>>14)>>>0)/4294967296;}}
+function distToSeg(px,py,ax,ay,bx,by){
+  const dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;
+  let t=l2?((px-ax)*dx+(py-ay)*dy)/l2:0;t=clamp(t,0,1);
+  return Math.hypot(px-(ax+dx*t),py-(ay+dy*t));}
+function jh(a,b,c){let h=(a*73856093)^(b*19349663)^(c*83492791);
+  h=Math.imul(h^(h>>>13),0x5bd1e995);h^=h>>>16;return(h>>>0)/4294967295;}
+
+/* ============ LEVEL SCALING ============ */
+function levelCfg(L){
+  const t=(L-1)/24;
+  return{
+    worldW:Math.round(lerp(1500,3300,t)),
+    worldH:Math.round(lerp(1100,2400,t)),
+    chambers:clamp(1+Math.floor((L-2)/4),1,6),
+    spikes:L<2?0:Math.round(lerp(4,26,(L-2)/23)),
+    keys:L<5?1:Math.round(lerp(1,5,(L-5)/20)),
+    paths:L<3?0:Math.round(lerp(1,5,(L-3)/22)),
+    nests:L<7?0:Math.round(lerp(1,3,(L-7)/18)),
+    doorPct:0.25+0.35*t
+  };
+}
+
+/* ============ GRID CAVE GENERATION ============ */
+/* cells: 0 void, 1 floor, 2 bridge, 3 water */
+function generateCave(seed,L){
+  const cfg=levelCfg(L);
+  const R=mulberry32(seed);
+  const cs=46;
+  const gw=Math.ceil(cfg.worldW/cs),gh=Math.ceil(cfg.worldH/cs);
+  const g=new Array(gh).fill(0).map(()=>new Array(gw).fill(0));
+  const at=(x,y)=>(x<0||y<0||x>=gw||y>=gh)?0:g[y][x];
+  const walk=(x,y)=>{const t=at(x,y);return t===1||t===2;};
+  /* chambers */
+  const chambers=[];
+  for(let i=0;i<cfg.chambers;i++){
+    let cx,cy,ok=false,tries=0;
+    while(!ok&&tries++<80){
+      cx=Math.floor(gw*(0.2+R()*0.6));cy=Math.floor(gh*(0.2+R()*0.6));
+      ok=chambers.every(c=>Math.hypot(c.cx-cx,c.cy-cy)*cs>Math.min(cfg.worldW,cfg.worldH)*0.4);}
+    if(!ok){cx=Math.floor(gw/2);cy=Math.floor(gh/2);}
+    const rx=(cfg.chambers===1?gw*0.36:gw*(0.13+R()*0.08));
+    const ry=(cfg.chambers===1?gh*0.36:gh*(0.15+R()*0.10));
+    const ph=R()*TAU;
+    const ph2=R()*TAU;
+    chambers.push({cx,cy});
+    for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){
+      const dx=(x-cx)/rx,dy=(y-cy)/ry;
+      /* uneven, rocky radius: combine lobes at different frequencies so the
+         cavern edge is irregular and angular, not a smooth ellipse */
+      const an=Math.atan2(dy,dx);
+      const n=0.22*Math.sin(an*5+ph)+0.12*Math.sin(an*3+ph2+1.7)
+             +0.08*Math.sin(an*11+ph*2.6)+0.05*Math.sin(an*7+ph2*3.1);
+      if(dx*dx+dy*dy<1+n)g[y][x]=1;}}
+  /* connecting tunnels */
+  const carve=(x,y)=>{if(x>0&&y>0&&x<gw-1&&y<gh-1)g[y][x]=g[y][x]||1;};
+  const tunnels=[];
+  for(let i=1;i<chambers.length;i++){
+    tunnels.push({a:chambers[i-1],b:chambers[i]});
+    const a=chambers[i-1],b=chambers[i];
+    const steps=Math.ceil(Math.hypot(b.cx-a.cx,b.cy-a.cy)*2);
+    for(let s=0;s<=steps;s++){
+      const x=Math.round(lerp(a.cx,b.cx,s/steps));
+      const y=Math.round(lerp(a.cy,b.cy,s/steps));
+      carve(x,y);carve(x+1,y);carve(x,y+1);}}
+  if(chambers.length>3){
+    const a=chambers[0],b=chambers[chambers.length-1];
+    tunnels.push({a,b});
+    const steps=Math.ceil(Math.hypot(b.cx-a.cx,b.cy-a.cy)*2);
+    for(let s=0;s<=steps;s++){
+      const x=Math.round(lerp(a.cx,b.cx,s/steps));
+      const y=Math.round(lerp(a.cy,b.cy,s/steps));
+      carve(x,y);carve(x+1,y);}}
+  /* winding side-paths: narrow branching paths from caverns leading to
+     tucked-away pocket rooms where keys or exits can be placed */
+  const pockets=[];
+  for(let pi=0;pi<cfg.paths;pi++){
+    const host=chambers[Math.floor(R()*chambers.length)];
+    /* start near the cavern edge heading outward */
+    const ang=R()*TAU;
+    const steps=3+Math.floor(R()*4);
+    let px=host.cx,py=host.cy;
+    for(let s0=0;s0<steps;s0++){
+      const ang2=ang+(R()-0.5)*0.9;
+      const nx=Math.round(px+Math.cos(ang2)*0.8),ny=Math.round(py+Math.sin(ang2)*0.8);
+      if(nx>1&&ny>1&&nx<gw-2&&ny<gh-2&&!walk(nx,ny)){
+        px=nx;py=ny;
+        carve(px,py);
+        if(R()<0.5)carve(px+1,py);}}
+    /* a small pocket room at the end of the path */
+    const pr=2+Math.floor(R()*1.5);
+    const wob=(R()-0.5)*2;
+    for(let yy=-pr;yy<=pr;yy++)for(let xx=-pr;xx<=pr;xx++){
+      const d=Math.hypot(xx,yy)/pr;
+      const n=0.15*Math.sin(Math.atan2(yy,xx)*5+wob);
+      if(d<1+n)carve(px+xx,py+yy);}
+    pockets.push({x:px,y:py});}
+  /* connectivity safety */
+  function comps(){
+    const comp=new Array(gw*gh).fill(-1);const first=[];let n=0;
+    for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){
+      if(!walk(x,y)||comp[y*gw+x]>=0)continue;
+      first.push([x,y]);
+      const q=[[x,y]];comp[y*gw+x]=n;
+      while(q.length){
+        const[cx,cy]=q.pop();
+        for(const[dxx,dyy]of[[1,0],[-1,0],[0,1],[0,-1]]){
+          const nx=cx+dxx,ny=cy+dyy;
+          if(walk(nx,ny)&&comp[ny*gw+nx]<0){comp[ny*gw+nx]=n;q.push([nx,ny]);}}}
+      n++;}
+    return{first,n};}
+  let C=comps(),guard=0;
+  while(C.n>1&&guard++<8){
+    const[a0,a1]=C.first[0],[b0,b1]=C.first[1];
+    const steps=Math.ceil(Math.hypot(b0-a0,b1-a1)*2);
+    for(let s=0;s<=steps;s++){
+      const x=Math.round(lerp(a0,b0,s/steps)),y=Math.round(lerp(a1,b1,s/steps));
+      for(const[ox,oy]of[[0,0],[1,0],[0,1]]){
+        const t=at(x+ox,y+oy);
+        if(t===3)g[y+oy][x+ox]=2;
+        else if(t===0&&x+ox>0&&y+oy>0&&x+ox<gw-1&&y+oy<gh-1)g[y+oy][x+ox]=1;}}
+    C=comps();}
+  /* placement */
+  function nearestWalk(px,py){
+    const cx=Math.floor(px/cs),cy=Math.floor(py/cs);
+    for(let r=0;r<12;r++)for(let y=cy-r;y<=cy+r;y++)for(let x=cx-r;x<=cx+r;x++){
+      if(walk(x,y))return{x:x*cs+cs/2,y:y*cs+cs/2};}
+    return{x:cx*cs+cs/2,y:cy*cs+cs/2};}
+  const spawn=nearestWalk(chambers[0].cx*cs,chambers[0].cy*cs);
+  const minExitDist=Math.max(Math.min(cfg.worldW,cfg.worldH)*0.4,600);
+  /* pick a chamber far from spawn in grid space */
+  let ec=null,bestDist=-1;
+  for(const c of chambers){
+    const d=Math.hypot(c.cx*cs-spawn.x,c.cy*cs-spawn.y);
+    if(d>bestDist){bestDist=d;ec=c;}}
+  /* choose the walkable point within the exit chamber farthest from spawn */
+  const eCx=Math.floor(ec.cx*cs/cs),eCy=Math.floor(ec.cy*cs/cs);
+  const er=Math.max(6,Math.ceil(cfg.chambers===1?gw*0.30:gw*0.16));
+  let ex=spawn.x,ey=spawn.y,bd=0;
+  for(let yy=eCy-er;yy<=eCy+er;yy++)for(let xx=eCx-er;xx<=eCx+er;xx++){
+    if(xx<0||yy<0||xx>=gw||yy>=gh)continue;
+    if(walk(xx,yy)){
+      const wx=xx*cs+cs/2,wy=yy*cs+cs/2;
+      const d=Math.hypot(wx-spawn.x,wy-spawn.y);
+      if(d>bd){bd=d;ex=wx;ey=wy;}}}
+  const exit={x:ex,y:ey};
+  /* keys: one per separate cavern when possible; spread wide in open spaces */
+  const keys=[];
+  /* key exclusion radius: keep keys far outside the spawn area */
+  const scR=(cfg.chambers===1?gw*0.36:gw*0.17)*cs;
+  const minSpawnSep=cfg.chambers===1
+    ? scR*0.8
+    : Math.max(scR*1.3,Math.min(cfg.worldW,cfg.worldH)*0.25);
+  /* keep keys well away from the exit door too */
+  const minExitSep=Math.max(260,Math.min(cfg.worldW,cfg.worldH)*0.24);
+  /* assign keys to caverns: use distinct chambers first, reuse only when
+     there are more keys than available caverns; NEVER the exit's chamber */
+  const nonSpawn=chambers.filter(c=>c!==chambers[0]&&c!==ec);
+  const pool=nonSpawn.slice();
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(R()*(i+1));
+    [pool[i],pool[j]]=[pool[j],pool[i]];}
+  const placed=[];
+  const minKeySep=Math.max(cs*7,Math.min(cfg.worldW,cfg.worldH)*0.3);
+  /* pockets that are far enough from spawn become candidate key hide-outs */
+  const farPockets=pockets.filter(p=>{
+    const wx=p.x*cs+cs/2,wy=p.y*cs+cs/2;
+    return Math.hypot(wx-spawn.x,wy-spawn.y)>minSpawnSep&&
+           Math.hypot(wx-exit.x,wy-exit.y)>minExitSep;});
+  for(let i=farPockets.length-1;i>0;i--){const j=Math.floor(R()*(i+1));
+    [farPockets[i],farPockets[j]]=[farPockets[j],farPockets[i]];}
+  /* build an anchor list: shuffled caverns followed by far pockets, so keys
+     alternate between caverns and tucked-away pockets */
+  const anchors=[];
+  for(let i=0;i<Math.max(pool.length,farPockets.length);i++){
+    if(i<pool.length)anchors.push({type:'ch',ch:pool[i]});
+    if(i<farPockets.length)anchors.push({type:'pk',pk:farPockets[i]});}
+  for(let k=0;k<cfg.keys;k++){
+    const an=anchors.length?anchors[k%anchors.length]:null;
+    let best=null,bestSc=-Infinity;
+    if(an&&an.type==='pk'){
+      /* key hides in a tucked-away pocket room reached by a side path */
+      const cx=an.pk.x,cy=an.pk.y;
+      const rad=3;
+      let bk=null,bkd=1e9;
+      for(let yy=cy-rad;yy<=cy+rad;yy++)for(let xx=cx-rad;xx<=cx+rad;xx++){
+        if(xx<0||yy<0||xx>=gw||yy>=gh)continue;
+        if(!walk(xx,yy))continue;
+        const wx=xx*cs+cs/2,wy=yy*cs+cs/2;
+        const dS=Math.hypot(wx-spawn.x,wy-spawn.y);
+        if(dS<minSpawnSep)continue;
+        if(Math.hypot(wx-exit.x,wy-exit.y)<minExitSep)continue;
+        let ok=true;
+        for(const p of placed)if(Math.hypot(p.x-wx,p.y-wy)<minKeySep){ok=false;break;}
+        if(!ok)continue;
+        const dc=Math.hypot(wx-cx*cs,wy-cy*cs);
+        if(dc<bkd){bkd=dc;best={x:wx,y:wy};}}
+    }else{
+      /* target cavern: pop a fresh cavern while available, else farthest */
+      let ch;
+      if(an&&an.type==='ch'){ch=an.ch;}
+      else{
+        if(pool.length)ch=pool.shift();
+        else{
+          let b=null,bd=-1;
+          for(const c of nonSpawn){
+            const d=Math.hypot(c.cx*cs-spawn.x,c.cy*cs-spawn.y);
+            if(d>bd){bd=d;b=c;}}
+          ch=b||chambers[0];}}
+      const rad=cfg.chambers===1?gw*0.3:gw*0.17;
+      for(let yy=Math.floor(ch.cy-rad);yy<=Math.ceil(ch.cy+rad);yy++)
+      for(let xx=Math.floor(ch.cx-rad);xx<=Math.ceil(ch.cx+rad);xx++){
+        if(xx<0||yy<0||xx>=gw||yy>=gh)continue;
+        if(!walk(xx,yy))continue;
+        const wx=xx*cs+cs/2,wy=yy*cs+cs/2;
+        const dS=Math.hypot(wx-spawn.x,wy-spawn.y);
+        const dE=Math.hypot(wx-exit.x,wy-exit.y);
+        if(dS<minSpawnSep)continue;
+        if(dE<minExitSep)continue;
+        let ok=true;
+        for(const p of placed)
+          if(Math.hypot(p.x-wx,p.y-wy)<minKeySep){ok=false;break;}
+        if(!ok)continue;
+        const dC=Math.hypot(wx-ch.cx*cs,wy-ch.cy*cs);
+        const sc=dS*0.006-dC*0.003+dE*0.004;
+        if(sc>bestSc){bestSc=sc;best={x:wx,y:wy};}}}
+    if(best){keys.push({x:best.x,y:best.y,taken:false});placed.push(best);}
+    else{
+      /* fallback: any well-spaced spot anywhere in the level, with a
+         relaxation ladder so every key ALWAYS gets placed */
+      let fb=null;
+      const ladder=[
+        {mS:minSpawnSep,mE:minExitSep,mK:minKeySep},
+        {mS:minSpawnSep,mE:Math.max(180,minExitSep*0.7),mK:minKeySep},
+        {mS:minSpawnSep*0.5,mE:Math.max(140,minExitSep*0.5),mK:Math.max(cs*7,minKeySep*0.6)},
+        {mS:cs*2,mE:cs*2,mK:cs*7},
+        {mS:0,mE:0,mK:0}];
+      for(const r of ladder){
+        if(fb)break;
+        let fsc=-Infinity;
+        for(let yy=1;yy<gh-1;yy++)for(let xx=1;xx<gw-1;xx++){
+          if(!walk(xx,yy))continue;
+          const wx=xx*cs+cs/2,wy=yy*cs+cs/2;
+          const dS=Math.hypot(wx-spawn.x,wy-spawn.y);
+          const dE=Math.hypot(wx-exit.x,wy-exit.y);
+          if(dS<r.mS||dE<r.mE)continue;
+          let ok=true;
+          for(const p of placed)
+            if(Math.hypot(p.x-wx,p.y-wy)<r.mK){ok=false;break;}
+          if(!ok)continue;
+          const sc=dS*0.006+dE*0.004;
+          if(sc>fsc){fsc=sc;fb={x:wx,y:wy};}}}
+      if(fb){keys.push({x:fb.x,y:fb.y,taken:false});placed.push(fb);}}}
+  /* spikes: perpendicular inward from rock wall faces */
+  const spikes=[];
+  let tries=0;
+  while(spikes.length<cfg.spikes&&tries++<800){
+    const x=1+Math.floor(R()*(gw-2)),y=1+Math.floor(R()*(gh-2));
+    if(!walk(x,y))continue;
+    const dirs=[[0,-1],[0,1],[-1,0],[1,0]].filter(d=>at(x+d[0],y+d[1])===0);
+    if(!dirs.length)continue;
+    const d=dirs[Math.floor(R()*dirs.length)];
+    const ix=-d[0],iy=-d[1];
+    let bx,by;
+    if(d[1]===0){bx=(x+(d[0]>0?1:0))*cs;by=(y+0.2+R()*0.6)*cs;}
+    else{bx=(x+0.2+R()*0.6)*cs;by=(y+(d[1]>0?1:0))*cs;}
+    if(Math.hypot(bx-spawn.x,by-spawn.y)<140)continue;
+    spikes.push({bx,by,tx:bx+ix*24,ty:by+iy*24,ang:Math.atan2(iy,ix)});}
+  /* guardians: random guard presence near keys (not always, not always on the key) */
+  const guardians=[];
+  if(L>=3)for(let i=0;i<keys.length;i++){
+    const k=keys[i];
+    if(Math.hypot(k.x-spawn.x,k.y-spawn.y)<450)continue;
+    /* ~55% chance a key is guarded at all; the rest are unguarded */
+    if(R()<0.45)continue;
+    /* random offset around the key so guardians aren't always sitting on it */
+    const ox=(R()-0.5)*200,oy=(R()-0.5)*200;
+    const gx=k.x+ox,gy=k.y+oy;
+    guardians.push({x:gx,y:gy,hx:gx,hy:gy,ki:i,state:0,t:0,dead:false});}
+  /* spider nests: dormant sacs hid away in the caverns (from depth 7 on) */
+  const nests=[];
+  if(cfg.nests>0){
+    /* candidate walkable cells, clear of spawn/exit/keys */
+    const nc=[];
+    for(let y=1;y<gh-1;y++)for(let x=1;x<gw-1;x++){
+      if(!walk(x,y))continue;
+      const wx=x*cs+cs/2,wy=y*cs+cs/2;
+      const ds=Math.hypot(wx-spawn.x,wy-spawn.y),de=Math.hypot(wx-exit.x,wy-exit.y);
+      if(ds<340||de<300)continue;
+      nc.push({x:wx,y:wy});}
+    /* tuck nests toward cavern edges / hidden spots, well apart */
+    for(let i=0;i<cfg.nests;i++){
+      let best=null,bsc=-Infinity;
+      for(const c0 of nc){
+        let near=false;
+        for(const n of nests)
+          if(Math.hypot(n.x-c0.x,n.y-c0.y)<330){near=true;break;}
+        if(near)continue;
+        let dk=1e9;
+        for(const k of keys)dk=Math.min(dk,Math.hypot(k.x-c0.x,k.y-c0.y));
+        if(dk<200)continue;
+        const ds=Math.hypot(c0.x-spawn.x,c0.y-spawn.y);
+        const sc=ds*0.006-(R()*40);
+        if(sc>bsc){bsc=sc;best=c0;}}
+      if(best){nests.push({x:best.x,y:best.y});nc.splice(nc.indexOf(best),1);}
+      else break;}}
+  /* rubble */
+  const rocks=[];
+  const nCl=2+Math.floor(R()*4);
+  for(let c=0;c<nCl;c++){
+    const w=nearestWalk(R()*gw*cs,R()*gh*cs);
+    const n=6+Math.floor(R()*10);
+    for(let i=0;i<n;i++){
+      const m=[];for(let s=0;s<5;s++)m.push(0.8+R()*0.35);
+      rocks.push({x:w.x+(R()-0.5)*120,y:w.y+(R()-0.5)*90,
+        r:8+R()*10,rot:R()*TAU,m});}}
+  return{cfg,cs,gw,gh,g,spawn,exit,keys,spikes,guardians,nests,rocks,chambers,pockets};
+}
+
+/* ============ STATE ============ */
+const S={isHost:false,peer:null,conns:new Map(),hostConn:null,
+  myId:'',room:'',seed:0,level:1,cave:null,names:{},
+  players:{},view:{},enemies:[],door:{open:false,k:0,need:1,keysLeft:0,keysN:0},
+  cam:{x:0,y:0},mouse:{x:innerWidth/2,y:innerHeight/2},
+  keys:{},stick:null,started:false,shake:0,won:false,reveal:false};
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const fog=document.createElement('canvas'),fctx=fog.getContext('2d');
+function resize(){cv.width=fog.width=innerWidth;cv.height=fog.height=innerHeight;}
+addEventListener('resize',resize);resize();
+
+/* ============ AUDIO ============ */
+let AC=null;
+function ensureAudio(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();startAmbient();}catch(e){}}
+  if(AC&&AC.state==='suspended')AC.resume();}
+function tone(f,f2,dur,type,vol,delay){
+  if(!AC)return;const t0=AC.currentTime+(delay||0);
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.type=type||'sine';o.frequency.setValueAtTime(f,t0);
+  if(f2)o.frequency.exponentialRampToValueAtTime(Math.max(20,f2),t0+dur);
+  g.gain.setValueAtTime(vol,t0);
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  o.connect(g).connect(AC.destination);o.start(t0);o.stop(t0+dur+0.05);}
+function noiseBurst(dur,vol,freq,type,delay){
+  if(!AC)return;const t0=AC.currentTime+(delay||0);
+  const n=AC.createBufferSource(),len=AC.sampleRate*dur;
+  const b=AC.createBuffer(1,len,AC.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+  n.buffer=b;
+  const f=AC.createBiquadFilter();f.type=type||'highpass';f.frequency.value=freq;
+  const g=AC.createGain();g.gain.setValueAtTime(vol,t0);
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  n.connect(f).connect(g).connect(AC.destination);n.start(t0);}
+function startAmbient(){
+  const len=AC.sampleRate*2,b=AC.createBuffer(1,len,AC.sampleRate),d=b.getChannelData(0);
+  let last=0;for(let i=0;i<len;i++){last=(last+0.02*(Math.random()*2-1))/1.02;d[i]=last*3;}
+  const n=AC.createBufferSource();n.buffer=b;n.loop=true;
+  const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=110;
+  const g=AC.createGain();g.gain.value=0.07;
+  n.connect(f).connect(g).connect(AC.destination);n.start();
+  setInterval(()=>{if(AC&&Math.random()<0.5){
+    tone(900+Math.random()*500,300,0.07,'sine',0.035);
+    tone(700+Math.random()*400,250,0.06,'sine',0.012,0.19);}},2200);}
+const snd={
+  growl:v=>tone(75,48,0.6,'sawtooth',0.10*v),
+  wake:v=>{
+    tone(220,55,1.2,'sawtooth',0.28*v);
+    noiseBurst(1.0,0.30*v,250,'lowpass');
+    tone(1700,220,0.9,'square',0.16*v);
+    tone(880,66,1.1,'sawtooth',0.20*v,0.05);
+    tone(1900,3200,0.35,'sawtooth',0.10*v,0.02);
+    noiseBurst(0.5,0.12*v,1500,'highpass',0.1);},
+  hurt:()=>{tone(130,55,0.22,'square',0.25);noiseBurst(0.12,0.2,300,'lowpass');},
+  die:()=>tone(220,38,0.9,'sine',0.3),
+  door:()=>{tone(440,440,0.5,'sine',0.10);tone(660,660,0.6,'sine',0.08,0.1);},
+  key:()=>{tone(880,880,0.1,'triangle',0.12);tone(1320,1320,0.14,'triangle',0.10,0.09);},
+  level:()=>{[330,440,550,660].forEach((f,i)=>tone(f,f,0.25,'triangle',0.10,i*0.12));},
+  nestBurst:v=>{
+    noiseBurst(0.45,0.55*v,500,'lowpass');
+    tone(200,50,0.6,'sawtooth',0.38*v);
+    tone(1500,320,0.3,'triangle',0.22*v);
+    noiseBurst(0.2,0.3*v,2400,'highpass',0.06);},
+  skitter:v=>tone(3200,1600,0.07,'square',0.05*v)
+};
+addEventListener('keydown',ensureAudio);addEventListener('mousedown',ensureAudio);
+
+/* ============ GRID HELPERS ============ */
+function cellAt(x,y){
+  const c=S.cave,cs=c.cs;
+  const cx=Math.floor(x/cs),cy=Math.floor(y/cs);
+  if(cx<0||cy<0||cx>=c.gw||cy>=c.gh)return 0;
+  return c.g[cy][cx];}
+function isWalk(x,y){const t=cellAt(x,y);return t===1||t===2;}
+function rockBlock(x,y){
+  if(!S.cave)return false;
+  for(const q of S.cave.rocks){
+    if(Math.hypot(x-q.x,y-q.y)<q.r+4)return true;}
+  return false;}
+function canStand(x,y){
+  const r=8,cs=S.cave.cs;
+  const x0=Math.floor((x-r)/cs),x1=Math.floor((x+r)/cs);
+  const y0=Math.floor((y-r)/cs),y1=Math.floor((y+r)/cs);
+  for(let cy=y0;cy<=y1;cy++)for(let cx=x0;cx<=x1;cx++){
+    const t=cellAt(cx*cs,cy*cs);
+    if(t!==1&&t!==2)return false;}
+  if(rockBlock(x-r,y-r)||rockBlock(x+r,y-r)||
+     rockBlock(x-r,y+r)||rockBlock(x+r,y+r)||
+     rockBlock(x-r,y)||rockBlock(x+r,y)||
+     rockBlock(x,y-r)||rockBlock(x,y+r)||rockBlock(x,y))return false;
+  return true;}
+
+/* ============ LIGHT MATH ============ */
+function hiveStats(p,all){
+  let n=0,al=0;
+  for(const q of all){if(q===p)continue;
+    if(Math.hypot(q.x-p.x,q.y-p.y)<170){n++;al+=Math.cos(q.a-p.a);}}
+  return{n,align:n?Math.max(0,al/n):0};}
+function beamLen(p,all){const{n,align}=hiveStats(p,all);
+  return 340*(1+Math.min(n,8)/8*0.6)*(1+align*0.8);}
+function tipR(p,all){const{n}=hiveStats(p,all);
+  return 48*(1+Math.min(n,8)/8*0.35)*0.67;}
+
+/* ============ GRID RAYCAST (DDA) ============ */
+function raycast(px,py,ang,maxLen){
+  const c=S.cave,cs=c.cs;
+  const dx=Math.cos(ang),dy=Math.sin(ang);
+  let cx=Math.floor(px/cs),cy=Math.floor(py/cs);
+  const stepX=dx>=0?1:-1,stepY=dy>=0?1:-1;
+  const tdx=dx!==0?Math.abs(cs/dx):Infinity;
+  const tdy=dy!==0?Math.abs(cs/dy):Infinity;
+  let tmx=dx!==0?(dx>0?((cx+1)*cs-px)/dx:(cx*cs-px)/dx):Infinity;
+  let tmy=dy!==0?(dy>0?((cy+1)*cs-py)/dy:(cy*cs-py)/dy):Infinity;
+  let t=0;
+  for(let i=0;i<256;i++){
+    t=tmx<tmy?tmx:tmy;
+    if(t>maxLen)return maxLen;
+    if(tmx<tmy){cx+=stepX;tmx+=tdx;}else{cy+=stepY;tmy+=tdy;}
+    if(cx<0||cy<0||cx>=c.gw||cy>=c.gh)return t;
+    if(c.g[cy][cx]===0)return t;  /* rock stops light; water/bridge/floor pass */
+  }
+  return maxLen;}
+function computeLights(all,t){
+  const out=[];let i=0;
+  for(const p of all){i++;
+    const fl=1+0.03*Math.sin(t/90+i*7)+0.02*Math.sin(t/47+i*3);
+    const maxL=beamLen(p,all)*fl;
+    const d=raycast(p.x,p.y,p.a,maxL);
+    const fade=1-d/maxL;
+    out.push({p,d,fade,hurt:p.hurt||0,
+      tx:p.x+Math.cos(p.a)*d,ty:p.y+Math.sin(p.a)*d,
+      rt:tipR(p,all)*Math.max(0.25,fade)});}
+  return out;}
+function litAt(x,y,lights){
+  for(const l of lights){
+    if(distToSeg(x,y,l.p.x,l.p.y,l.tx,l.ty)<20)return true;
+    if(Math.hypot(x-l.tx,y-l.ty)<l.rt+6)return true;}
+  return false;}
+
+/* ============ NETWORK ============ */
+const $=id=>document.getElementById(id);
+function setStatus(m){$('status').textContent=m;}
+function rndCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s='';for(let i=0;i<4;i++)s+=c[Math.floor(Math.random()*c.length)];return s;}
+function packPlayers(){return Object.entries(S.players).map(([id,p])=>
+  [id,Math.round(p.x),Math.round(p.y),+p.a.toFixed(2),Math.round(p.hp),p.dead?1:0,+(p.hurt||0).toFixed(2)]);}
+function packEnemies(){return S.enemies.map(e=>
+  [Math.round(e.x),Math.round(e.y),e.dead?4:e.state,
+   e.kind==='spider'?1:(e.kind==='nest'?2:0)]);}
+function packKeys(){return S.cave.keys.map(k=>k.taken?1:0);}
+function unpack(arr){
+  for(const[id,x,y,a,hp,dead,hurt]of arr){
+    const was=S.players[id];
+    if(!was)S.players[id]={x,y,a,hp,dead:!!dead,hurt:0,mx:0,my:0,kbx:0,kby:0};
+    else{
+      if(id===S.myId&&!was.dead){
+        if(hp<was.hp){S.shake=14;snd.hurt();}
+        if(dead&&!was.dead)snd.die();}
+      if(id===S.myId&&!dead&&was.dead)$('deadMsg').style.display='none';
+      if(id===S.myId&&dead&&!was.dead)$('deadMsg').style.display='block';
+      was.x=x;was.y=y;was.a=a;was.hp=hp;was.dead=!!dead;was.hurt=hurt;}}
+  for(const id of Object.keys(S.players))
+    if(!arr.some(e=>e[0]===id))delete S.players[id];}
+function syncKeys(arr){
+  S.cave.keys.forEach((k,i)=>{
+    if(arr[i]&&!k.taken)snd.key();
+    k.taken=!!arr[i];});}
+function startGame(){
+  S.started=true;ensureAudio();
+  $('lobby').classList.add('hidden');
+  $('hud').classList.remove('hidden');$('hint').classList.remove('hidden');
+  $('logo').classList.remove('hidden');
+  $('hRoom').textContent=S.room;
+  buildDots();
+  requestAnimationFrame(frame);}
+
+function hostGame(){
+  S.room=rndCode();S.isHost=true;
+  const nm=$('pname').value.trim().toUpperCase()||'HOST';
+  $('joinBox').classList.add('hidden');
+  const panel=$('hostPanel'),codeEl=$('hostCode'),cnt=$('hostCount'),inv=$('hostInvite');
+  panel.classList.remove('hidden');
+  codeEl.textContent='…';
+  cnt.textContent='PLAYERS READY: 0';
+  inv.textContent='';
+  const invite=()=>location.href.split(/[?#]/)[0]+'?r='+S.room;
+  function updateCount(){
+    const n=S.conns.size;
+    cnt.textContent='PLAYERS READY: '+n+(n?'':' — waiting for players');
+    inv.textContent=invite();}
+  S.peer=new Peer('illuminate-'+S.room,{debug:0});
+  S.peer.on('open',id=>{
+    S.myId=id;S.names[id]=nm;
+    S.view={};updateCount();
+    $('hRoom').textContent=S.room;
+    setStatus('room open — share this link');});
+  S.peer.on('connection',conn=>{
+    if(S.conns.size>=29){conn.on('open',()=>conn.close());return;}
+    conn.on('open',()=>{
+      S.conns.set(conn.peer,conn);
+      if(S.started&&S.cave){
+        S.players[conn.peer]=newPlayer(
+          S.cave.spawn.x+(Math.random()-0.5)*60,S.cave.spawn.y+(Math.random()-0.5)*60);
+        conn.send({t:'init',seed:S.seed,level:S.level,names:S.names,
+          p:packPlayers(),e:packEnemies(),k:packKeys(),door:S.door});}
+      updateCount();});
+    conn.on('data',d=>{
+      if(d.t==='name'){S.names[conn.peer]=d.n;
+        S.conns.forEach(c=>c.send({t:'name',id:conn.peer,n:d.n}));}
+      else if(d.t==='in'&&S.players[conn.peer]){
+        const p=S.players[conn.peer];p.mx=d.mx;p.my=d.my;p.a=d.a;}
+      else if(d.t==='dev'){loadLevel(d.L,(Math.random()*4294967296)>>>0);}});
+    conn.on('close',()=>{S.conns.delete(conn.peer);
+      if(S.started)delete S.players[conn.peer];updateCount();});});
+  S.peer.on('error',e=>setStatus('error: '+e.type));}
+$('bHost').onclick=hostGame;
+function hostStart(){
+  if(!S.room||!S.myId||S.started)return;
+  S.seed=(Math.random()*4294967296)>>>0;
+  S.cave=generateCave(S.seed,S.level);
+  S.view={};
+  S.players[S.myId]=newPlayer(S.cave.spawn.x,S.cave.spawn.y);
+  S.enemies=S.cave.guardians.map(g=>({...g,kind:'guard'})).concat(
+    S.cave.nests.map(n=>({...n,kind:'nest',state:0,t:0,dead:false})));
+  S.conns.forEach(conn=>{
+    S.players[conn.peer]=newPlayer(
+      S.cave.spawn.x+(Math.random()-0.5)*60,S.cave.spawn.y+(Math.random()-0.5)*60);
+    conn.send({t:'init',seed:S.seed,level:S.level,names:S.names,
+      p:packPlayers(),e:packEnemies(),k:packKeys(),door:S.door});});
+  const invite=location.href.split(/[?#]/)[0]+'?r='+S.room;
+  const ir=$('invite'),iv=$('invRow');
+  if(ir){ir.textContent=invite;iv&&iv.classList.remove('hidden');}
+  $('hostPanel').classList.add('hidden');
+  setStatus('room open — share the invite link');
+  startGame();startHostLoops();}
+$('bStart').onclick=hostStart;
+$('bCopyH').onclick=()=>{
+  const link=location.href.split(/[?#]/)[0]+'?r='+S.room;
+  if(navigator.clipboard)navigator.clipboard.writeText(link).catch(()=>{});
+  $('bCopyH').textContent='COPIED';
+  setTimeout(()=>$('bCopyH').textContent='COPY LINK',1200);};
+$('bCopy').onclick=()=>{
+  const invite=$('invite').textContent;
+  if(navigator.clipboard&&invite)navigator.clipboard.writeText(invite).catch(()=>{});
+  $('bCopy').textContent='COPIED';
+  setTimeout(()=>$('bCopy').textContent='COPY LINK',1200);};
+
+function joinGame(code){
+  if(code.length<4)return setStatus('enter the 4-letter code');
+  S.room=code;S.isHost=false;
+  S.peer=new Peer(undefined,{debug:0});
+  S.peer.on('open',id=>{
+    S.myId=id;
+    const conn=S.peer.connect('illuminate-'+code,{reliable:true});
+    S.hostConn=conn;
+    conn.on('open',()=>conn.send({t:'name',
+      n:$('pname').value.trim().toUpperCase()||('MOTH-'+(10+Math.floor(Math.random()*89)))}));
+    conn.on('data',d=>{
+      if(d.t==='init'){
+        S.seed=d.seed;S.level=d.level;S.door=d.door;S.names=d.names||{};
+        S.cave=generateCave(S.seed,S.level);unpack(d.p);
+        S.enemies=decEnemies(d.e);
+        syncKeys(d.k);$('hLvl').textContent=S.level;startGame();
+      }else if(d.t==='st'){
+        unpack(d.p);S.door=d.door;syncEnemies(d.e);syncKeys(d.k);
+      }else if(d.t==='name'){S.names[d.id]=d.n;
+      }else if(d.t==='lvl'){
+        S.seed=d.seed;S.level=d.level;S.cave=generateCave(S.seed,S.level);
+        S.view={};unpack(d.p);
+        S.enemies=decEnemies(d.e);
+        syncKeys(d.k);$('hLvl').textContent=S.level;snd.level();
+        $('deadMsg').style.display='none';updateDots();
+      }else if(d.t==='win'){S.won=true;$('winMsg').style.display='block';snd.level();}});
+    conn.on('close',()=>{alert('host left');location.reload();});
+    conn.on('open',()=>setStatus('joined, syncing…'));});
+  S.peer.on('error',e=>setStatus('error: '+e.type));}
+$('bJoin').onclick=()=>joinGame($('code').value.trim().toUpperCase());
+
+/* deep link: ?host=true hosts, ?r=CODE sits in on the given room like tilt.html */
+{
+  const pr=new URLSearchParams(location.search);
+  if(pr.get('host')==='true')hostGame();
+  else{const cr=(pr.get('r')||'').trim().toUpperCase();
+    if(cr.length>=4){$('code').value=cr;joinGame(cr);}}}
+function decEnemies(e){return e.map(en=>({x:en[0],y:en[1],state:en[2],
+  dead:en[2]===4,kind:en[3]===1?'spider':en[3]===2?'nest':'guard'}));}
+function syncEnemies(e){
+  e.forEach((en,i)=>{
+    const ex=S.enemies[i]||(S.enemies[i]={x:en[0],y:en[1],state:en[2],dead:en[2]===4,
+      kind:en[3]===1?'spider':en[3]===2?'nest':'guard'});
+    const me=S.players[S.myId];
+    const vol=me?clamp(1-Math.hypot(en[0]-me.x,en[1]-me.y)/900,0,1):0;
+    const wasDead=!!ex.dead;
+    if(ex.kind==='guard'&&ex.state!==en[2]&&en[2]===2&&vol>0)snd.wake(vol);
+    if(ex.kind==='nest'&&!wasDead&&en[2]===4)snd.nestBurst(Math.max(vol,0.5));
+    ex.x=en[0];ex.y=en[1];ex.state=en[2];ex.dead=en[2]===4;
+    if(en[3]===1)ex.kind='spider';else if(en[3]===2)ex.kind='nest';else ex.kind='guard';});
+  S.enemies.length=e.length;}
+
+/* ============ HOST SIM ============ */
+function newPlayer(x,y){return{x,y,a:0,hp:100,dead:false,hurt:0,mx:0,my:0,kbx:0,kby:0};}
+function playerHue(id){let h=0;for(const ch of id)h=(h*31+ch.charCodeAt(0))>>>0;return h%360;}
+function hurt(p,amt,ang,kb){
+  if(p.dead||(p.hurt>0&&ang!==undefined))return;
+  p.hp-=amt;p.hurt=1;
+  if(ang!==undefined){p.kbx=Math.cos(ang)*(kb||400);p.kby=Math.sin(ang)*(kb||400);}
+  if(p.hp<=0){p.hp=0;p.dead=true;}}
+function loadLevel(L,seed){
+  S.level=L;S.seed=seed;S.cave=generateCave(seed,L);S.view={};
+  for(const p of Object.values(S.players)){
+    p.x=S.cave.spawn.x+(Math.random()-0.5)*60;
+    p.y=S.cave.spawn.y+(Math.random()-0.5)*60;
+    p.hp=100;p.dead=false;p.hurt=0;p.kbx=0;p.kby=0;}
+S.enemies=S.cave.guardians.map(g=>({...g,kind:'guard'})).concat(
+  S.cave.nests.map(n=>({...n,kind:'nest',state:0,t:0,dead:false})));
+S.conns.forEach(c=>c.send({t:'lvl',seed,level:L,
+  p:packPlayers(),e:packEnemies(),k:packKeys()}));
+  $('hLvl').textContent=L;snd.level();
+  $('deadMsg').style.display='none';updateDots();}
+function nextLevel(){
+  if(S.level>=25){S.won=true;
+    S.conns.forEach(c=>c.send({t:'win'}));$('winMsg').style.display='block';return;}
+  loadLevel(S.level+1,(Math.imul(S.seed,1664525)+1013904223)>>>0);}
+function hostTick(){
+  const ps=S.players,all=Object.values(ps),alive=all.filter(p=>!p.dead);
+  let cx=0,cy=0;alive.forEach(p=>{cx+=p.x;cy+=p.y;});
+  if(alive.length){cx/=alive.length;cy/=alive.length;}
+  const dt=1/30;
+  const lights=computeLights(alive,performance.now());
+  for(const p of all){
+    if(p.hurt>0)p.hurt-=dt;
+    if(p.dead)continue;
+    const vx=(p.mx||0)*240+(cx-p.x)*0.08+p.kbx;
+    const vy=(p.my||0)*240+(cy-p.y)*0.08+p.kby;
+    p.kbx*=0.86;p.kby*=0.86;
+    const nx=clamp(p.x+vx*dt,20,S.cave.cfg.worldW-20);
+    const ny=clamp(p.y+vy*dt,20,S.cave.cfg.worldH-20);
+    if(canStand(nx,p.y))p.x=nx;
+    if(canStand(p.x,ny))p.y=ny;
+    for(const s of S.cave.spikes)
+      if(Math.hypot(p.x-s.tx,p.y-s.ty)<16)
+        hurt(p,30,s.ang,430);}
+  for(const k of S.cave.keys)if(!k.taken)
+    for(const p of alive)
+      if(Math.hypot(p.x-k.x,p.y-k.y)<22){k.taken=true;snd.key();break;}
+  /* enemies: guardians, spider nests, spiders */
+  for(const e of S.enemies){
+    if(e.dead)continue;
+    let near=null,nd=1e9;
+    for(const p of alive){const d=Math.hypot(p.x-e.x,p.y-e.y);
+      if(d<nd){nd=d;near=p;}}
+    if(e.kind==='guard'){
+      if(S.cave.keys[e.ki].taken){e.dead=true;continue;}
+      e.t-=dt;
+      const lit=litAt(e.x,e.y,lights);
+      if(e.state===0){
+        if(near&&nd<80){
+          e.state=2;
+          if(S.isHost&&near){
+          const vol=clamp(1-Math.hypot(near.x-e.x,near.y-e.y)/900,0.3,1);
+          snd.wake(vol);}
+        }
+      }else if(e.state===2){
+        if(!lit&&near){
+          e.x+=(near.x-e.x)/nd*70*dt;
+          e.y+=(near.y-e.y)/nd*70*dt;
+          if(nd<18){hurt(near,40,Math.atan2(near.y-e.y,near.x-e.x),450);
+            e.state=3;e.t=2.5;}}
+        const hd=Math.hypot(e.hx-e.x,e.hy-e.y);
+        if(hd>260){e.x+=(e.hx-e.x)/hd*90*dt;e.y+=(e.hy-e.y)/hd*90*dt;}
+      }else if(e.state===3){
+        const hd=Math.hypot(e.hx-e.x,e.hy-e.y);
+        if(hd>14){e.x+=(e.hx-e.x)/hd*130*dt;e.y+=(e.hy-e.y)/hd*130*dt;}
+        if(hd<=14||e.t<=0)e.state=0;}
+    }else if(e.kind==='nest'){
+      /* bursts when a player is near AND its light shines on the sac */
+      if(near&&nd<260&&litAt(e.x,e.y,lights)){
+        e.dead=true;e.t=0;
+        snd.nestBurst(clamp(1-nd/260,0.4,1));
+        S.shake=10;
+        const nSp=3+Math.floor(Math.random()*4);
+        let spawned=0,tries=0;
+        while(spawned<nSp&&tries++<40){
+          const oa=Math.random()*TAU,od=14+Math.random()*55;
+          const sx=e.x+Math.cos(oa)*od,sy=e.y+Math.sin(oa)*od;
+          if(canStand(sx,sy)){
+            S.enemies.push({x:sx,y:sy,hx:0,hy:0,kind:'spider',state:2,
+              t:1.0,t2:0,turn:oa,dead:false});
+            spawned++;}}
+        if(spawned)continue;}}
+    else{
+      /* spider: pursues players in the dark, repelled (and burned) by light */
+      e.t-=dt;
+      const lit=litAt(e.x,e.y,lights);
+      let vx=0,vy=0;
+      if(lit){
+        e.t2=(e.t2||0)+dt;
+        if(e.t2>3){e.dead=true;continue;}
+        if(near){
+          const a=Math.atan2(e.y-near.y,e.x-near.x);
+          vx=Math.cos(a)*175;vy=Math.sin(a)*175;}
+        else{
+          e.turn=(e.turn||Math.random()*TAU)+(Math.random()-0.5)*2;
+          vx=Math.cos(e.turn)*175;vy=Math.sin(e.turn)*175;}
+      }else{
+        e.t2=0;
+        if(near){
+          const a=Math.atan2(near.y-e.y,near.x-e.x);
+          vx=Math.cos(a)*125;vy=Math.sin(a)*125;
+          if(nd<12&&e.t<=0){
+            hurt(near,14,Math.atan2(near.y-e.y,near.x-e.x),320);
+            e.t=1.0;
+            snd.skitter(clamp(1-nd/400,0.2,1));}
+        }else{
+          e.turn=(e.turn||Math.random()*TAU)+(Math.random()-0.5)*2;
+          vx=Math.cos(e.turn)*60;vy=Math.sin(e.turn)*60;}}
+      const nx=clamp(e.x+vx*dt,20,S.cave.cfg.worldW-20);
+      const ny=clamp(e.y+vy*dt,20,S.cave.cfg.worldH-20);
+      if(canStand(nx,e.y))e.x=nx;
+      if(canStand(e.x,ny))e.y=ny;}}
+  /* door: counts beams whose PATH crosses the door, or tips covering it */
+  let k=0;
+  for(const l of lights){
+    if(distToSeg(S.cave.exit.x,S.cave.exit.y,l.p.x,l.p.y,l.tx,l.ty)<36)k++;
+    else if(Math.hypot(S.cave.exit.x-l.tx,S.cave.exit.y-l.ty)<l.rt+30)k++;}
+  const need=Math.max(1,Math.round(alive.length*S.cave.cfg.doorPct));
+  const keysLeft=S.cave.keys.filter(kk=>!kk.taken).length;
+  const wasOpen=S.door.open;
+  S.door={open:keysLeft===0&&k>=need,k,need,keysLeft,keysN:S.cave.keys.length};
+  if(!wasOpen&&S.door.open)snd.door();
+  /* level only advances once EVERY living player has reached the exit */
+  S.door.atExit=0;
+  if(S.door.open){
+    for(const p of alive)
+      if(Math.hypot(S.cave.exit.x-p.x,S.cave.exit.y-p.y)<46)S.door.atExit++;
+    if(alive.length&&S.door.atExit===alive.length)nextLevel();}}
+function startHostLoops(){
+  let n=0;
+  setInterval(()=>{hostTick();
+    if(++n%2===0){
+      const msg={t:'st',p:packPlayers(),e:packEnemies(),k:packKeys(),door:S.door};
+      S.conns.forEach(c=>c.send(msg));}},1000/30);}
+
+/* ============ INPUT ============ */
+addEventListener('keydown',e=>{
+  if(e.target&&e.target.tagName==='INPUT')return;
+  S.keys[e.key.toLowerCase()]=true;
+  if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault();});
+addEventListener('keyup',e=>{
+  if(e.target&&e.target.tagName==='INPUT')return;
+  S.keys[e.key.toLowerCase()]=false;});
+addEventListener('blur',()=>{for(const k in S.keys)S.keys[k]=false;});
+addEventListener('mousemove',e=>{S.mouse.x=e.clientX;S.mouse.y=e.clientY;});
+addEventListener('touchstart',touch,{passive:false});
+addEventListener('touchmove',touch,{passive:false});
+addEventListener('touchend',()=>{S.stick=null;},{passive:false});
+function touch(e){e.preventDefault();
+  for(const t of e.touches){
+    if(t.clientX<innerWidth/2){
+      if(!S.stick)S.stick={ox:t.clientX,oy:t.clientY,dx:0,dy:0};
+      S.stick.dx=clamp((t.clientX-S.stick.ox)/50,-1,1);
+      S.stick.dy=clamp((t.clientY-S.stick.oy)/50,-1,1);
+    }else{S.mouse.x=t.clientX;S.mouse.y=t.clientY;}}}
+function myInput(){
+  let mx=0,my=0;
+  if(S.stick&&(S.stick.dx||S.stick.dy)){mx=S.stick.dx;my=S.stick.dy;}
+  else{
+    if(S.keys['w']||S.keys['arrowup'])my=-1;
+    if(S.keys['s']||S.keys['arrowdown'])my=1;
+    if(S.keys['a']||S.keys['arrowleft'])mx=-1;
+    if(S.keys['d']||S.keys['arrowright'])mx=1;
+    const l=Math.hypot(mx,my);if(l>1){mx/=l;my/=l;}}
+  const me=S.players[S.myId];let a=0;
+  if(me)a=Math.atan2(S.mouse.y-(me.y-S.cam.y),S.mouse.x-(me.x-S.cam.x));
+  return{mx,my,a};}
+setInterval(()=>{
+  if(!S.started||!S.players[S.myId])return;
+  const inp=myInput();
+  if(S.isHost){const p=S.players[S.myId];p.mx=inp.mx;p.my=inp.my;p.a=inp.a;}
+  else if(S.hostConn&&S.hostConn.open)
+    S.hostConn.send({t:'in',mx:inp.mx,my:inp.my,a:inp.a});
+},1000/30);
+
+/* ============ DEV MENU ============ */
+$('logo').onclick=e=>{e.stopPropagation();
+  $('devPanel').classList.toggle('hidden');
+  if(!$('devPanel').classList.contains('hidden'))showDevState();};
+function devAuthed(){return sessionStorage.getItem('illuminateDev')==='1';}
+function showDevState(){
+  $('devLock').classList.toggle('hidden',devAuthed());
+  $('devTools').classList.toggle('hidden',!devAuthed());
+  if(devAuthed()){updateDots();$('revealChk').checked=!!S.reveal;}}
+$('devUnlock').onclick=()=>{
+  if($('devPass').value.trim().toLowerCase()==='shine'){
+    sessionStorage.setItem('illuminateDev','1');
+    $('devErr').textContent='';$('devPass').value='';
+    showDevState();
+  }else{
+    $('devErr').textContent='denied';
+    $('devPass').value='';}};
+$('devPass').addEventListener('keydown',e=>{
+  e.stopPropagation();
+  if(e.key==='Enter')$('devUnlock').click();});
+$('revealChk').onchange=e=>{S.reveal=e.target.checked;};
+function buildDots(){
+  const w=$('devDots');w.innerHTML='';
+  for(let i=1;i<=25;i++){
+    const d=document.createElement('span');
+    d.className='dot';d.title='depth '+i;
+    d.onclick=()=>jumpTo(i);
+    w.appendChild(d);}}
+function updateDots(){
+  const dots=$('devDots').children;
+  for(let i=0;i<dots.length;i++)
+    dots[i].className='dot'+(i+1===S.level?' cur':'');}
+function jumpTo(L){
+  if(S.isHost)loadLevel(L,(Math.random()*4294967296)>>>0);
+  else if(S.hostConn&&S.hostConn.open)S.hostConn.send({t:'dev',L});}
+
+/* ============ RENDER ============ */
+function cornerPt(cs,cx,cy){
+  const o1=(jh(cx,cy,1)-0.5)*16,o2=(jh(cx,cy,2)-0.5)*16;
+  return[cx*cs+o1,cy*cs+o2];}
+function drawWorld(t){
+  const c=S.cave,cs=c.cs,g=c.g;
+  const isWc=(x,y)=>{const t2=(x<0||y<0||x>=c.gw||y>=c.gh)?0:g[y][x];
+    return t2===1||t2===2;};
+  const x0=Math.max(0,Math.floor(S.cam.x/cs)-1),
+        x1=Math.min(c.gw-1,Math.ceil((S.cam.x+cv.width)/cs)+1),
+        y0=Math.max(0,Math.floor(S.cam.y/cs)-1),
+        y1=Math.min(c.gh-1,Math.ceil((S.cam.y+cv.height)/cs)+1);
+  ctx.save();ctx.translate(-S.cam.x,-S.cam.y);
+  ctx.lineJoin='round';ctx.lineCap='round';
+  /* rock walls */
+  ctx.strokeStyle='rgba(215,224,238,0.95)';ctx.lineWidth=1.4;
+  ctx.beginPath();
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+    const t2=g[y][x];if(t2!==1&&t2!==2)continue;
+    if(!isWc(x,y-1)){const a=cornerPt(cs,x,y),b=cornerPt(cs,x+1,y);
+      ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);}
+    if(!isWc(x,y+1)){const a=cornerPt(cs,x,y+1),b=cornerPt(cs,x+1,y+1);
+      ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);}
+    if(!isWc(x-1,y)){const a=cornerPt(cs,x,y),b=cornerPt(cs,x,y+1);
+      ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);}
+    if(!isWc(x+1,y)){const a=cornerPt(cs,x+1,y),b=cornerPt(cs,x+1,y+1);
+      ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);}}
+  ctx.stroke();
+  /* water body */
+  ctx.fillStyle='rgba(50,110,220,0.16)';
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)
+    if(g[y][x]===3)ctx.fillRect(x*cs+1,y*cs+1,cs-2,cs-2);
+  /* water bank edges */
+  ctx.strokeStyle='rgba(120,170,230,0.5)';ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+    if(g[y][x]!==3)continue;
+    const isWt=(a,b)=>(a<0||b<0||a>=c.gw||b>=c.gh)?false:g[b][a]===3;
+    if(!isWt(x,y-1)){const a=cornerPt(cs,x,y),b=cornerPt(cs,x+1,y);
+      ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);}
+    if(!isWt(x,y+1)){const a=cornerPt(cs,x,y+1),b=cornerPt(cs,x+1,y+1);
+      ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);}
+    if(!isWt(x-1,y)){const a=cornerPt(cs,x,y),b=cornerPt(cs,x,y+1);
+      ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);}
+    if(!isWt(x+1,y)){const a=cornerPt(cs,x+1,y),b=cornerPt(cs,x+1,y+1);
+      ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);}}
+  ctx.stroke();
+  /* animated smooth waves (continuous across cells) */
+  ctx.strokeStyle='rgba(130,200,255,0.55)';ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+    if(g[y][x]!==3)continue;
+    for(const off of[0.35,0.7]){
+      const wx0=x*cs,wx1=(x+1)*cs,wb=y*cs+cs*off;
+      ctx.moveTo(wx0,wb+Math.sin(t/650+wx0*0.04)*3);
+      ctx.lineTo(wx0+cs/2,wb+Math.sin(t/650+(wx0+cs/2)*0.04)*3.4);
+      ctx.lineTo(wx1,wb+Math.sin(t/650+wx1*0.04)*3);}}
+  ctx.stroke();
+  /* bridges */
+  ctx.strokeStyle='rgba(235,225,200,0.9)';ctx.lineWidth=1.3;
+  ctx.beginPath();
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+    if(g[y][x]!==2)continue;
+    const isC=(a,b)=>(a<0||b<0||a>=c.gw||b>=c.gh)?false:g[b][a]===3;
+    if(isC(x,y-1)||isC(x,y+1)){
+      ctx.moveTo(x*cs+8,y*cs+4);ctx.lineTo(x*cs+cs-8,y*cs+4);
+      ctx.moveTo(x*cs+8,y*cs+cs-4);ctx.lineTo(x*cs+cs-8,y*cs+cs-4);
+      for(let p=1;p<4;p++){
+        ctx.moveTo(x*cs+6+p*(cs-12)/3,y*cs+4);
+        ctx.lineTo(x*cs+6+p*(cs-12)/3,y*cs+cs-4);}}
+    else{
+      ctx.moveTo(x*cs+4,y*cs+8);ctx.lineTo(x*cs+4,y*cs+cs-8);
+      ctx.moveTo(x*cs+cs-4,y*cs+8);ctx.lineTo(x*cs+cs-4,y*cs+cs-8);
+      for(let p=1;p<4;p++){
+        ctx.moveTo(x*cs+4,y*cs+6+p*(cs-12)/3);
+        ctx.lineTo(x*cs+cs-4,y*cs+6+p*(cs-12)/3);}}}
+  ctx.stroke();
+  /* rubble */
+  ctx.strokeStyle='rgba(200,210,226,0.8)';ctx.lineWidth=1.1;
+  for(const q of c.rocks){
+    if(q.x<S.cam.x-80||q.x>S.cam.x+cv.width+80||
+       q.y<S.cam.y-80||q.y>S.cam.y+cv.height+80)continue;
+    if(!isWalk(q.x,q.y))continue;
+    ctx.beginPath();
+    for(let s=0;s<5;s++){const an=q.rot+s/5*TAU,rr=q.r*q.m[s];
+      s?ctx.lineTo(q.x+Math.cos(an)*rr,q.y+Math.sin(an)*rr)
+       :ctx.moveTo(q.x+Math.cos(an)*rr,q.y+Math.sin(an)*rr);}
+    ctx.closePath();ctx.stroke();}
+  /* spikes */
+  ctx.strokeStyle='rgba(235,240,250,0.9)';ctx.lineWidth=1.2;
+  for(const s of c.spikes){
+    const px=Math.cos(s.ang+Math.PI/2)*7,py=Math.sin(s.ang+Math.PI/2)*7;
+    ctx.beginPath();ctx.moveTo(s.bx+px,s.by+py);ctx.lineTo(s.tx,s.ty);
+    ctx.lineTo(s.bx-px,s.by-py);ctx.stroke();}
+  /* keys */
+  for(const k of c.keys){
+    if(k.taken)continue;
+    ctx.save();ctx.translate(k.x,k.y);
+    ctx.rotate(Math.sin(t/500+k.x)*0.25);
+    ctx.strokeStyle='rgba(255,220,130,0.95)';ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.arc(0,-5,4,0,TAU);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,-1);ctx.lineTo(0,8);
+    ctx.moveTo(0,8);ctx.lineTo(3,8);ctx.moveTo(0,4);ctx.lineTo(2.5,4);ctx.stroke();
+    ctx.restore();}
+  /* door */
+  const e=c.exit,pu=1+0.12*Math.sin(t/300);
+  ctx.strokeStyle=S.door.open?'rgba(255,220,150,1)':'rgba(215,224,238,0.9)';
+  ctx.lineWidth=1.6;
+  for(const s of[26*pu,14*pu]){
+    ctx.beginPath();
+    ctx.moveTo(e.x,e.y-s);ctx.lineTo(e.x+s,e.y);
+    ctx.lineTo(e.x,e.y+s);ctx.lineTo(e.x-s,e.y);
+    ctx.closePath();ctx.stroke();}
+  ctx.strokeStyle='rgba(255,220,130,0.8)';ctx.lineWidth=1;
+  for(let i=0;i<(S.door.keysLeft||0);i++){
+    const ox=(i-(S.door.keysLeft-1)/2)*12;
+    ctx.beginPath();ctx.arc(e.x+ox,e.y+38,3,0,TAU);ctx.stroke();}
+  /* enemies: guardians, nests (even burst ones), spiders */
+  for(const en of S.enemies){
+    if(en.kind==='nest')drawNest(en,t);
+    else if(en.kind==='spider')drawSpider(en,t);
+    else if(!en.dead)drawGuardian(en,t);}
+  /* players + tags */
+  ctx.font='9px Courier New';ctx.textAlign='center';
+  for(const[id,p]of Object.entries(S.view)){
+    const tag=(S.names[id]||id.slice(-4)).toUpperCase();
+    if(p.dead){
+      ctx.strokeStyle='rgba(255,110,90,0.6)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(p.x-5,p.y-5);ctx.lineTo(p.x+5,p.y+5);
+      ctx.moveTo(p.x+5,p.y-5);ctx.lineTo(p.x-5,p.y+5);ctx.stroke();
+      ctx.fillStyle='rgba(255,255,255,0.55)';ctx.fillText('✝'+tag,p.x,p.y+18);
+    }else{
+      const h=clamp(p.hurt||0,0,1);
+      ctx.fillStyle=h>0.3?'rgba(255,255,255,0.95)':'hsl('+playerHue(id)+',72%,62%)';
+      ctx.beginPath();ctx.arc(p.x,p.y,3.5+h*2,0,TAU);ctx.fill();
+      ctx.fillStyle='rgba(30,34,42,0.9)';ctx.fillRect(p.x-10,p.y-12,20,3);
+      ctx.fillStyle=p.hp>50?'rgba(125,255,154,0.9)':'rgba(255,106,90,0.9)';
+      ctx.fillRect(p.x-10,p.y-12,20*p.hp/100,3);
+      ctx.strokeStyle='rgba(30,34,42,0.6)';ctx.lineWidth=3;
+      ctx.strokeText(tag,p.x,p.y+16);
+      ctx.fillStyle='rgba(255,255,255,0.95)';ctx.fillText(tag,p.x,p.y+16);}}
+  if(S.reveal){
+    ctx.fillStyle='rgba(122,130,145,0.9)';ctx.font='10px Courier New';
+    ctx.fillText('SPAWN',c.spawn.x,c.spawn.y-16);
+    ctx.fillText('EXIT',c.exit.x,c.exit.y-40);
+    ctx.fillText('DEPTH '+S.level,c.spawn.x,c.spawn.y+30);}
+  ctx.restore();}
+function drawGuardian(en,t){
+  ctx.save();ctx.translate(en.x,en.y);
+  const awake=en.state===2;
+  ctx.strokeStyle=awake?'rgba(240,235,245,0.95)':'rgba(200,205,220,0.7)';
+  ctx.lineWidth=1.3;
+  ctx.beginPath();
+  ctx.moveTo(0,10);ctx.lineTo(0,-6);
+  ctx.moveTo(-6,0);ctx.lineTo(6,0);
+  ctx.moveTo(0,10);ctx.lineTo(-4,16);ctx.moveTo(0,10);ctx.lineTo(4,16);
+  ctx.stroke();
+  ctx.beginPath();ctx.arc(0,-10,4,0,TAU);ctx.stroke();
+  ctx.fillStyle=awake?'rgba(255,60,40,1)':'rgba(150,155,170,0.6)';
+  ctx.beginPath();ctx.arc(-1.5,-10,1.1,0,TAU);ctx.arc(1.5,-10,1.1,0,TAU);ctx.fill();
+  ctx.restore();}
+function drawNest(en,t){
+  ctx.save();ctx.translate(en.x,en.y);
+  const alive=!en.dead;
+  const wob=alive?1+0.05*Math.sin(t/90):1;
+  ctx.strokeStyle=alive?'rgba(215,220,230,0.5)':'rgba(180,185,200,0.25)';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let i=0;i<6;i++){
+    const a=i/6*TAU+(alive?t/400:0);
+    const r=(8+Math.sin(t/200+i*2)*1.5)*wob;
+    ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+    ctx.moveTo(Math.cos(a)*(r-3),Math.sin(a)*(r-3));
+    ctx.lineTo(Math.cos(a+0.4)*4,Math.sin(a+0.4)*4);}
+  ctx.stroke();
+  if(alive){
+    const px=0.02*Math.sin(t/300);
+    ctx.fillStyle='#9b8f7a';
+    ctx.beginPath();
+    ctx.ellipse(px,0,7*wob,9*wob,0,0,TAU);
+    ctx.fill();
+    ctx.strokeStyle='rgba(245,245,250,0.9)';ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(0,-9*wob);ctx.quadraticCurveTo(3,-2,0,9*wob);
+    ctx.moveTo(0,-9*wob);ctx.quadraticCurveTo(-3,-2,0,9*wob);
+    ctx.stroke();}
+  ctx.restore();}
+function drawSpider(en,t){
+  ctx.save();ctx.translate(en.x,en.y);
+  const ph=t/35+(en.turn||0);
+  ctx.strokeStyle='rgba(90,95,110,0.9)';ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let i=0;i<4;i++){
+    const a=(i-1.5)*0.9;
+    const lift=Math.sin(ph+i*1.7)*3;
+    ctx.moveTo(Math.cos(a)*3,Math.sin(a)*2);
+    ctx.lineTo(Math.cos(a)*6+Math.cos(ph+i*1.9)*1.5,Math.sin(a)*4+lift);
+    ctx.moveTo(Math.cos(a+Math.PI)*3,Math.sin(a)*2);
+    ctx.lineTo(Math.cos(a+Math.PI)*6+Math.cos(ph+i*1.9+1)*1.5,Math.sin(a)*4+lift);}
+  ctx.stroke();
+  ctx.fillStyle='rgba(70,74,88,0.95)';
+  ctx.beginPath();ctx.arc(0,0,3.4,0,TAU);ctx.arc(1,0,2.2,0,TAU);ctx.fill();
+  ctx.fillStyle='rgba(255,90,70,0.95)';
+  ctx.beginPath();ctx.arc(1.5,-1.3,0.8,0,TAU);ctx.arc(2.6,-0.4,0.8,0,TAU);ctx.fill();
+  ctx.restore();}
+function punch(x,y,r,alpha){
+  const g=fctx.createRadialGradient(x,y,2,x,y,r);
+  g.addColorStop(0,'rgba(255,255,255,'+alpha+')');
+  g.addColorStop(0.6,'rgba(255,255,255,'+(alpha*0.5)+')');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  fctx.fillStyle=g;fctx.beginPath();fctx.arc(x,y,r,0,TAU);fctx.fill();}
+function buildFog(lights){
+  fctx.setTransform(1,0,0,1,0,0);
+  fctx.globalCompositeOperation='source-over';
+  fctx.clearRect(0,0,fog.width,fog.height);
+  fctx.fillStyle='#000';fctx.fillRect(0,0,fog.width,fog.height);
+  fctx.translate(-S.cam.x,-S.cam.y);
+  fctx.globalCompositeOperation='destination-out';
+  for(const l of lights){
+    punch(l.p.x,l.p.y,40,0.55);
+    punch(l.tx,l.ty,l.rt,0.85*Math.max(0.15,l.fade));
+    for(let s=1;s<=5;s++){
+      const frac=s/6,mx=l.p.x+Math.cos(l.p.a)*l.d*frac,
+        my=l.p.y+Math.sin(l.p.a)*l.d*frac,fo=1-frac;
+      punch(mx,my,18*fo+6,0.35*fo);}}
+  fctx.globalCompositeOperation='source-over';}
+function drawBeams(lights){
+  ctx.save();ctx.translate(-S.cam.x,-S.cam.y);ctx.lineCap='round';
+  for(const l of lights){
+    const h=clamp(l.hurt,0,1);
+    const cg=Math.round(230-150*h),cb=Math.round(170-110*h);
+    let g=ctx.createLinearGradient(l.p.x,l.p.y,l.tx,l.ty);
+    g.addColorStop(0,'rgba(255,'+cg+','+cb+',0.12)');
+    g.addColorStop(1,'rgba(255,'+cg+','+cb+',0)');
+    ctx.strokeStyle=g;ctx.lineWidth=6;
+    ctx.beginPath();ctx.moveTo(l.p.x,l.p.y);ctx.lineTo(l.tx,l.ty);ctx.stroke();
+    g=ctx.createLinearGradient(l.p.x,l.p.y,l.tx,l.ty);
+    g.addColorStop(0,'rgba(255,'+cg+','+cb+',0.9)');
+    g.addColorStop(0.5,'rgba(255,'+cg+','+cb+',0.5)');
+    g.addColorStop(0.85,'rgba(255,'+cg+','+cb+',0.15)');
+    g.addColorStop(1,'rgba(255,'+cg+','+cb+',0)');
+    ctx.strokeStyle=g;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(l.p.x,l.p.y);ctx.lineTo(l.tx,l.ty);ctx.stroke();
+    if(l.fade>0.15){
+      const g3=ctx.createRadialGradient(l.tx,l.ty,0,l.tx,l.ty,10*l.fade);
+      g3.addColorStop(0,'rgba(255,'+cg+','+cb+','+(0.4*l.fade)+')');
+      g3.addColorStop(1,'rgba(255,'+cg+','+cb+',0)');
+      ctx.fillStyle=g3;ctx.beginPath();ctx.arc(l.tx,l.ty,10*l.fade,0,TAU);ctx.fill();}}
+  ctx.restore();}
+function frame(){
+  requestAnimationFrame(frame);
+  if(!S.started||!S.cave)return;
+  const me=S.players[S.myId];
+  if(me&&!me.dead){
+    S.cam.x=lerp(S.cam.x,me.x-innerWidth/2,0.08);
+    S.cam.y=lerp(S.cam.y,me.y-innerHeight/2,0.08);
+  }else{
+    let cx=0,cy=0,n=0;
+    for(const p of Object.values(S.players))if(!p.dead){cx+=p.x;cy+=p.y;n++;}
+    if(n){S.cam.x=lerp(S.cam.x,cx/n-innerWidth/2,0.05);
+          S.cam.y=lerp(S.cam.y,cy/n-innerHeight/2,0.05);}}
+  for(const[id,p]of Object.entries(S.players)){
+    const v=S.view[id]||(S.view[id]={x:p.x,y:p.y,a:p.a,dead:p.dead,hp:p.hp,hurt:0});
+    v.x=lerp(v.x,p.x,0.25);v.y=lerp(v.y,p.y,0.25);v.a=lerpAng(v.a,p.a,0.25);
+    v.dead=p.dead;v.hp=p.hp;v.hurt=p.hurt||0;}
+  for(const id of Object.keys(S.view))if(!S.players[id])delete S.view[id];
+  S.shake*=0.88;
+  S.cam.x+=(Math.random()-0.5)*S.shake;
+  S.cam.y+=(Math.random()-0.5)*S.shake;
+  const t=performance.now();
+  const lights=computeLights(Object.values(S.view).filter(p=>!p.dead),t);
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle='#06070b';ctx.fillRect(0,0,cv.width,cv.height);
+  drawWorld(t);
+  if(!S.reveal){
+    buildFog(lights);
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.drawImage(fog,0,0);}
+  drawBeams(lights);
+  /* awakened guardian eyes glow through the dark */
+  ctx.save();ctx.translate(-S.cam.x,-S.cam.y);
+  ctx.globalCompositeOperation='lighter';
+  for(const en of S.enemies)if(!en.dead&&en.state===2&&en.kind==='guard'){
+    ctx.fillStyle='rgba(255,60,40,0.8)';
+    ctx.beginPath();ctx.arc(en.x-1.5,en.y-10,1.2,0,TAU);
+    ctx.arc(en.x+1.5,en.y-10,1.2,0,TAU);ctx.fill();}
+  ctx.restore();
+  if(S.door.open){
+    const ex=S.cave.exit.x-S.cam.x,ey=S.cave.exit.y-S.cam.y;
+    ctx.strokeStyle='rgba(255,210,140,'+(0.15+0.08*Math.sin(t/200))+')';
+    ctx.lineWidth=1;ctx.beginPath();ctx.arc(ex,ey,34,0,TAU);ctx.stroke();}
+  if(me&&me.hurt>0){
+    const g=ctx.createRadialGradient(cv.width/2,cv.height/2,Math.min(cv.width,cv.height)*0.3,
+      cv.width/2,cv.height/2,Math.max(cv.width,cv.height)*0.7);
+    g.addColorStop(0,'rgba(255,40,30,0)');
+    g.addColorStop(1,'rgba(255,40,30,'+(0.4*me.hurt)+')');
+    ctx.fillStyle=g;ctx.fillRect(0,0,cv.width,cv.height);}
+  ctx.strokeStyle='rgba(150,160,180,0.18)';ctx.lineWidth=1;
+  ctx.strokeRect(20.5,20.5,cv.width-41,cv.height-41);}
+function lerpAng(a,b,t){
+  let d=(b-a)%TAU;if(d>Math.PI)d-=TAU;if(d<-Math.PI)d+=TAU;
+  return a+d*t;}
+
+setInterval(()=>{
+  if(!S.started||!AC)return;
+  const me=S.players[S.myId];if(!me||me.dead)return;
+  for(const en of S.enemies)if(!en.dead&&en.state===2&&en.kind==='guard'){
+    const d=Math.hypot(en.x-me.x,en.y-me.y);
+    if(d<320&&Math.random()<0.5){snd.growl(clamp(1-d/320,0,1));break;}}
+},1400);
+
+/* ============ HUD ============ */
+setInterval(()=>{
+  if(!S.started)return;
+  const all=Object.values(S.players),alive=all.filter(p=>!p.dead);
+  const me=S.players[S.myId];
+  $('hCount').textContent=alive.length;
+  if(me){
+    $('hpBar').style.width=me.hp+'%';
+    $('hpBar').style.background=me.hp>50?'#7dff9a':'#ff6a5a';}
+  const kl=S.door.keysLeft||0,kn=S.door.keysN||0;
+  $('hKeys').textContent=kn?('KEYS '+(kn-kl)+'/'+kn):'';
+  if(S.cave&&S.door.open){
+    let at=0;
+    for(const p of alive)
+      if(Math.hypot(p.x-S.cave.exit.x,p.y-S.cave.exit.y)<46)at++;
+    $('hDoor').textContent='ESCAPE '+at+'/'+alive.length+' AT EXIT';
+  }else $('hDoor').textContent=kl>0?'DOOR: LOCKED':
+    ('DOOR: '+(S.door.open?'OPEN':'DARK')+' '+S.door.k+'/'+S.door.need);
+  let sum=0,n=0;
+  for(const p of alive)for(const q of alive){if(p===q)continue;
+    if(Math.hypot(p.x-q.x,p.y-q.y)<170){sum+=Math.max(0,Math.cos(p.a-q.a));n++;}}
+  $('syncBar').style.width=(n?Math.round(sum/n*100):0)+'%';
+},250);
+</script>
+</body>
+</html>

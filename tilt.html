@@ -415,7 +415,7 @@
       };
     }
 
-    function getPath(grid, sx, sy, gx, gy) {
+    function getPath(grid, sx, sy, gx, gy, noGo) {
       const size = grid.length;
       const prev = Array(size).fill().map(() => Array(size).fill(null));
       const visited = Array(size).fill().map(() => Array(size).fill(false));
@@ -429,6 +429,7 @@
         for (const [dx, dy] of dirs) {
           const nx = cx + dx, ny = cy + dy;
           if (nx >= 0 && nx < size && ny >= 0 && ny < size && !visited[ny][nx] && grid[ny][nx] === 0) {
+            if (noGo && noGo.has(ny + ',' + nx)) continue; // never step onto a protected cell
             visited[ny][nx] = true;
             prev[ny][nx] = [cx, cy];
             queue.push([nx, ny]);
@@ -655,11 +656,12 @@
     // 5.  LEVEL BUILDER & SERIALIZER
     // =========================================================================
     let levelData = {
-      walls: [], electricWalls: [], portals: [], jumpPads: [], barriers: [], colorSwitches: [],
+      walls: [], electricWalls: [], portals: [], jumpPads: [], barriers: [], colorSwitches: [], enemies: [],
       startPos: new THREE.Vector3(0,0,0),
       goalPos: new THREE.Vector3(0,0,0),
       size: 0, goalMesh: null,
       dual: false, mazeHalf: 0, viewHalf: 0, gapHalf: 0,
+      enemyGrid: null, centerCol: 0,
     };
     const levelGroup = new THREE.Group();
     tableGroup.add(levelGroup);
@@ -691,6 +693,7 @@
     const jumpMat = new THREE.MeshStandardMaterial({ color: 0x44aaff, emissive: 0x0044aa, emissiveIntensity: 0.3 });
     const floorMat = new THREE.MeshStandardMaterial({ map: gridTex, color: 0xffffff, roughness: 0.85, metalness: 0.05 });
     const goalMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.5 });
+    const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff5533, emissive: 0xff2200, emissiveIntensity: 0.25, roughness: 0.4, metalness: 0.1 });
 
     const floorMeshes = [];
 
@@ -719,6 +722,7 @@
       floorMeshes.length = 0;
       levelData.walls = []; levelData.electricWalls = [];
       levelData.portals = []; levelData.jumpPads = []; levelData.barriers = []; levelData.colorSwitches = [];
+      levelData.enemies = []; levelData.enemyGrid = null;
     }
 
     function levelSize(levelNum) {
@@ -861,6 +865,167 @@
       const entry = { mesh: dot, x, z, color };
       levelData.colorSwitches.push(entry);
       return entry;
+    }
+
+    // -- CHASER ENEMY ("rolly cube") helpers ------------------------------
+    // Find a dead-end alcove recess just off the corridor, deep enough that the
+    // player won't trip the trigger at spawn but close to the route it sits on,
+    // so the cube is actually encountered as the player travels through.
+    function findAlcoveCell(maze, rng) {
+      const size = maze.grid.length;
+      const crit = maze.critPath || maze.path;
+      let best = null, bestScore = -1e9;
+      for (let r = 1; r < size - 1; r++) {
+        for (let c = 1; c < size - 1; c++) {
+          if (maze.grid[r][c] !== 0) continue;
+          if (r === 1 && c === 1) continue;
+          if (maze.goalCell[0] === c && maze.goalCell[1] === r) continue;
+          let open = 0;
+          for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+            if (maze.grid[r + dy] && maze.grid[r + dy][c + dx] === 0) open++;
+          }
+          if (open !== 1) continue; // must be a true dead-end alcove
+          const dStart = Math.abs(c - 1) + Math.abs(r - 1);
+          if (dStart < 4) continue; // not too close to spawn
+          const dPath = distToPath(crit, r, c);
+          if (dPath > 2) continue;  // must branch straight off the player's route
+          // Prefer an alcove that hangs off the route (dPath 1) and lies a good
+          // way into the maze so it wakes mid-run, not at spawn.
+          const reach = 2 - dPath;
+          const score = reach * 1000 + dStart * 1 + rng() * 2;
+          if (score > bestScore) { bestScore = score; best = { r, c }; }
+        }
+      }
+      if (best) return best;
+      // Fallback: any open cell off the route, not the spawn/goal.
+      for (let r = 1; r < size - 1; r++) {
+        for (let c = 1; c < size - 1; c++) {
+          if (maze.grid[r][c] !== 0) continue;
+          if (r === 1 && c === 1) continue;
+          if (maze.goalCell[0] === c && maze.goalCell[1] === r) continue;
+          const dStart = Math.abs(c - 1) + Math.abs(r - 1);
+          if (dStart >= 4) return { r, c };
+        }
+      }
+      return { r: 1, c: 1 }; // absolute last resort (should never happen)
+    }
+
+    // Build the set of maze cells the enemy cube is forbidden from entering.
+    // This is the whole critical route to the goal (plus the start cell), so the
+    // solution is always clear and the goal is always reachable.
+    function buildEnemyNoGo(maze) {
+      const set = new Set();
+      const crit = maze.critPath || maze.path;
+      if (crit) for (const [c, r] of crit) set.add(r + ',' + c);
+      set.add('1,1'); // the entrance — never let a cube camp your spawn
+      return set;
+    }
+
+    // Place sleeping cubes in maze dead ends for levels 15+. A dead end is an
+    // open cell with exactly one open neighbour — a terminal alcove. Cubes are
+    // kept OFF the critical route / goal / portal areas so they can never camp
+    // the way forward, then hidden in the alcoves to wake on proximity.
+    function placeDeadEndEnemies(maze, portalA, portalB, levelNum, cell, centerCol) {
+      const grid = maze.grid;
+      const size = grid.length;
+      const count = Math.min(2 + Math.floor((levelNum - 15) / 3), 5);
+      if (count <= 0) return;
+
+      // Cells we must not threaten: the solution route and its immediate
+      // neighbours, the start, the goal, and the portals.
+      const exclude = new Set();
+      const crit = maze.critPath || maze.path;
+      if (crit) {
+        for (const [c, r] of crit) {
+          for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+            exclude.add((r + dr) + ',' + (c + dc));
+          }
+        }
+      }
+      if (maze.goalCell) {
+        for (let dr = -1; dr <= 2; dr++) for (let dc = -1; dc <= 2; dc++) {
+          exclude.add((maze.goalCell[1] + dr) + ',' + (maze.goalCell[0] + dc));
+        }
+      }
+      for (const pc of [portalA, portalB]) {
+        if (!pc) continue;
+        for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+          exclude.add((pc[1] + dr) + ',' + (pc[0] + dc));
+        }
+      }
+      const startKey = [1, 1]; // maze entrance
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        exclude.add((startKey[1] + dr) + ',' + (startKey[0] + dc));
+      }
+
+      // Gather dead-end alcoves.
+      const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+      const deadends = [];
+      // Start the walk from any open cell to only keep REACHABLE alcoves.
+      for (let r = 1; r < size - 1; r++) {
+        for (let c = 1; c < size - 1; c++) {
+          if (grid[r][c] !== 0) continue;
+          if (exclude.has(r + ',' + c)) continue;
+          let open = 0;
+          for (const [dx, dy] of dirs) if (grid[r + dy][c + dx] === 0) open++;
+          if (open === 1) deadends.push([c, r]);
+        }
+      }
+
+      // Deterministic shuffle per level, then place the sleeper cubes.
+      const rng = makeRng(levelNum, 900);
+      for (let i = deadends.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [deadends[i], deadends[j]] = [deadends[j], deadends[i]];
+      }
+      const picked = deadends.slice(0, Math.min(count, deadends.length));
+      for (const [c, r] of picked) {
+        const x = maze.centerX + (c - centerCol) * cell;
+        const z = (r - centerCol) * cell;
+        addEnemyMesh(x, z, levelNum, 'sleeper');
+      }
+    }
+
+    function addEnemyMesh(x, z, levelNum, mode) {
+      const cube = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), enemyMat.clone());
+      cube.position.set(x, 0.4, z);
+      cube.castShadow = true;
+      cube.visible = false; // hidden until it wakes/its delay elapses
+      levelGroup.add(cube);
+      const sleeping = (mode === 'sleeper');
+      const e = {
+        mesh: cube,
+        mode: mode || 'chase',
+        homeX: x, homeZ: z,
+        x, z,
+        radius: 0.42,
+        active: sleeping,     // sleepers are "active" the moment they wake up
+        sleeping,             // sleeper cubes start slumbering in their dead end
+        wakeR: 3.0,           // wake radius in cells for sleeper cubes
+        delay: sleeping ? 0.2 : 5.0,  // awake chasers wait, sleepers spring
+        spawnT: 0,            // pop-in animation timer
+        path: null, node: 0,
+        curlc: null, curlr: null,
+        roll: 0,
+        speed: 1.12,          // cells per second — brisk but outrunnable
+        pulseTimer: 0,
+        soundOn: false,
+        cr: 0, cc: 0,        // current grid cell (row, col) the cube rests on
+        fcr: 0, fcc: 0,      // grid cell the in-progress flip is heading into
+        flipT: 0,            // time left in the current 90° tumble (0 = not flipping)
+        waitT: 0,            // pause time between tumbles
+        grace: 0,            // freeze timer after a portal crossing (fair re-entry)
+        chaseT: 0,           // seconds spent actively pursuing this stretch of chase
+        rest: false,         // whether the cube is recharging (standing down)
+        restT: 0,            // seconds left in the current rest
+        returning: false,    // whether the cube has given up and is heading home
+        retStall: 0,         // time spent unable to advance toward home while returning
+        fromX: 0, fromZ: 0,  // world position at the start of the flip
+        toX: 0, toZ: 0,      // world position at the end of the flip
+        dirX: 0, dirZ: 0,    // travel direction (unit) for the flip
+      };
+      levelData.enemies.push(e);
+      return e;
     }
 
     // Border openings for one maze island are ONLY ever cut at the END OF AN
@@ -1289,6 +1454,28 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       goalLight.position.set(levelData.goalPos.x, 0.6, levelData.goalPos.z);
       levelGroup.add(goalLight);
 
+      // Chaser enemies. Levels 8-14: one cube that spawns where the player
+      // started and gives chase from level up. Level 15+: several cubes hidden
+      // in dead ends that stay asleep until the player gets close, then wake
+      // and chase.
+      levelData.enemyGrid = mazeA.grid;
+      levelData.centerCol = centerCol;
+      levelData.enemyACenterX = mazeA.centerX;
+      // The cube may NEVER step onto the solution route (the critical path to
+      // the goal) — so it can never camp the only way forward. It patrols the
+      // side pockets, dead ends and alcoves instead.
+      levelData.enemyNoGo = (levelNum >= 8)
+        ? buildEnemyNoGo(mazeA)
+        : null;
+      if (levelNum >= 15) {
+        placeDeadEndEnemies(mazeA, portalA, portalB, levelNum, cell, centerCol);
+      } else if (levelNum >= 8) {
+        const e = addEnemyMesh(levelData.startPos.x, levelData.startPos.z, levelNum, 'chase');
+        const sr = Math.round(levelData.startPos.z / cell + centerCol);
+        const sc = Math.round((levelData.startPos.x - mazeA.centerX) / cell + centerCol);
+        e.curlr = sr; e.curlc = sc;
+      }
+
       // Frame hugs the real footprint: full A-to-B width in X, but only the
       // island depth in Z. On dual levels the frame must follow the island
       // depth, not the wide cross span, or it balloons out into the void.
@@ -1335,7 +1522,12 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
             })),
             colorSwitches: levelData.colorSwitches.map(d => ({ x: d.x, z: d.z, color: d.color })),
             jumpPads: levelData.jumpPads.map(j => ({ x: j.x, z: j.z })),
-            portals: levelData.portals.map(p => ({ x: p.x, z: p.z, pair: p.pair }))
+            portals: levelData.portals.map(p => ({ x: p.x, z: p.z, pair: p.pair })),
+            enemyGrid: levelData.enemyGrid,
+            centerCol: levelData.centerCol,
+            enemyACenterX: levelData.enemyACenterX,
+            enemyNoGo: levelData.enemyNoGo ? Array.from(levelData.enemyNoGo) : null,
+            enemies: levelData.enemies.map(e => ({ x: e.homeX, z: e.homeZ, mode: e.mode }))
         };
     }
 
@@ -1389,6 +1581,22 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       // Portals
       for (let pData of data.portals) {
         addPortalMesh(pData.x, pData.z, pData.pair);
+      }
+
+      // Chaser enemies. The client runs the SAME chase logic as the host
+      // (toward the local ball), so it needs the maze grid + geometry sent in
+      // the level packet instead of relying on throttled/absent host data.
+      levelData.enemyGrid = data.enemyGrid || null;
+      levelData.centerCol = data.centerCol || 0;
+      levelData.enemyACenterX = (data.enemyACenterX !== undefined)
+        ? data.enemyACenterX
+        : (levelData.dual ? -(levelData.mazeHalf + levelData.gapHalf) : 0);
+      levelData.enemyNoGo = data.enemyNoGo ? new Set(data.enemyNoGo) : null;
+      if (data.enemies) {
+        for (let eData of data.enemies) {
+          addEnemyMesh(eData.x, eData.z, data.level, eData.mode);
+        }
+        resetEnemies();
       }
 
       // Goal
@@ -1479,6 +1687,443 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       velocity.set(0, 0, 0);
       ballColor = 'neutral';
       ball.material.color.set(0xccccdd);
+      resetEnemies();
+    }
+
+    // -- GAME AUDIO ---------------------------------------------------------
+    // One shared AudioContext created on the first user gesture (browser
+    // autoplay policy). Provides short action cues (no constant background hum),
+    // plus the chaser's proximity-driven pulsing drone.
+    let audio = null;
+    function ensureAudio() {
+      if (audio) {
+        if (audio.ctx.state === 'suspended') audio.ctx.resume();
+        return audio.ctx;
+      }
+      if (!window.AudioContext && !window.webkitAudioContext) return null;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AC();
+      const master = ctx.createGain();
+      master.gain.value = 0.6;
+      master.connect(ctx.destination);
+      audio = { ctx, master };
+      return ctx;
+    }
+
+    // One-shot procedural sound effect.
+    function sfx(kind, int) {
+      const ctx = ensureAudio(); if (!ctx || !audio) return;
+      const intensity = isFinite(int) ? Math.max(0, Math.min(1, int)) : 0.5;
+      const t = ctx.currentTime;
+      const note = (type, freq, t0, dur, vol) => {
+        const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, t + t0);
+        g.gain.linearRampToValueAtTime(vol, t + t0 + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + t0 + dur);
+        o.connect(g); g.connect(audio.master);
+        o.start(t + t0); o.stop(t + t0 + dur + 0.05);
+      };
+      switch (kind) {
+        case 'portal':
+          note('sine', 440, 0, 0.35, 0.14);
+          note('sine', 660, 0.06, 0.35, 0.10);
+          note('sine', 880, 0.12, 0.35, 0.07);
+          break;
+        case 'win':
+          note('sine', 523, 0, 0.4, 0.12);
+          note('sine', 659, 0.12, 0.4, 0.12);
+          note('sine', 784, 0.24, 0.7, 0.15);
+          break;
+        case 'boom':
+          note('sawtooth', 140, 0, 0.35, 0.22);
+          note('sine', 55, 0, 0.5, 0.28);
+          note('sawtooth', 100, 0.04, 0.3, 0.18);
+          break;
+        case 'pickup':
+          note('square', 880, 0, 0.1, 0.08);
+          note('square', 1320, 0.08, 0.12, 0.07);
+          break;
+        case 'catch':
+          note('sawtooth', 220, 0, 0.3, 0.18);
+          note('sawtooth', 110, 0.05, 0.4, 0.22);
+          note('sine', 55, 0.05, 0.45, 0.22);
+          break;
+        case 'jump':
+          note('sine', 300, 0, 0.2, 0.1);
+          note('sine', 500, 0.05, 0.2, 0.08);
+          break;
+        case 'impact': {
+          // Bright percussive flourish when the ball slams a wall hard.
+          const v = 0.6 + intensity * 0.4; // louder for harder hits
+          note('sine', 420, 0, 0.08, 0.10 * v);
+          note('sine', 630, 0.03, 0.1, 0.08 * v);
+          note('sine', 840, 0.06, 0.13, 0.06 * v);
+          note('triangle', 210, 0, 0.16, 0.13 * v);
+          break;
+        }
+      }
+    }
+
+    // -- CHASER ENEMY: pulsing proximity drone ------------------------------
+    let chaser = null;
+    let lastImpactSound = 0; // cooldown so hard-wall hits don't rattle
+    function startChaserSound() {
+      const ctx = ensureAudio(); if (!ctx || !audio || chaser) return;
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle'; osc.frequency.value = 62;
+      const oscGain = ctx.createGain(); oscGain.gain.value = 0;
+      const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 3;
+      const lfoGain = ctx.createGain(); lfoGain.gain.value = 0;
+      lfo.connect(lfoGain); lfoGain.connect(oscGain.gain);
+      osc.connect(oscGain); oscGain.connect(audio.master);
+      osc.start(); lfo.start();
+      chaser = { oscGain, lfo, lfoGain };
+    }
+    function updateChaserSound(prox) {
+      if (!chaser) return;
+      if (!isFinite(prox)) prox = 0;
+      prox = Math.max(0, Math.min(1, prox));
+      const vol = prox > 0 ? 0.06 + prox * prox * 0.5 : 0;
+      chaser.oscGain.gain.value = vol;
+      chaser.lfo.frequency.value = 1.5 + prox * 8;
+      chaser.lfoGain.gain.value = prox > 0 ? vol * 0.8 : 0;
+    }
+    function stopChaserSound() {
+      if (chaser) {
+        chaser.oscGain.gain.value = 0;
+        chaser.lfoGain.gain.value = 0;
+      }
+    }
+
+    // Settle a cube into its dormant home state: small, dim, still in its
+    // alcove, waiting to be approached before it wakes again.
+    function dozeEnemy(e) {
+      e.x = e.homeX; e.z = e.homeZ;
+      e.mesh.position.set(e.x, 0.4, e.z);
+      e.mesh.quaternion.identity();
+      e.roll = 0;
+      e.flipT = 0; e.waitT = 0;
+      e.sleeping = true;
+      e.active = false;
+      e.returning = false;
+      e.chaseT = 0; e.retStall = 0;
+    }
+
+    // Reset every chaser to its alcove, still and silent.
+    function resetEnemies() {
+      const cell = CONFIG.cellSize, centerCol = levelData.centerCol;
+      for (const e of levelData.enemies) {
+        e.x = e.homeX; e.z = e.homeZ;
+        e.active = e.mode === 'sleeper';     // sleepers are set to spring the instant they wake
+        e.sleeping = e.mode === 'sleeper';
+        e.delay = e.mode === 'sleeper' ? 0.2 : 5.0;
+        e.spawnT = 0;
+        e.path = null; e.node = 0;
+        e.flipT = 0; e.waitT = 0; e.grace = 0;
+        e.chaseT = 0; e.rest = false; e.restT = 0; e.returning = false; e.retStall = 0;
+        const hc = Math.round((e.homeX - levelData.enemyACenterX) / cell + centerCol);
+        const hr = Math.round(e.homeZ / cell + centerCol);
+        e.cr = hr; e.cc = hc;
+        e.mesh.position.set(e.homeX, 0.4, e.homeZ);
+        e.mesh.rotation.set(0, 0, 0);
+        e.mesh.quaternion.identity();
+        e.mesh.position.y = 0.4;
+        e.mesh.visible = e.mode === 'sleeper'; // sleeping cubes are dimly visible in their alcove
+        e.mesh.material.emissiveIntensity = e.mode === 'sleeper' ? 0.10 : 0.25;
+        e.mesh.scale.set(e.mode === 'sleeper' ? 0.6 : 1, e.mode === 'sleeper' ? 0.6 : 1, e.mode === 'sleeper' ? 0.6 : 1);
+      }
+      stopChaserSound();
+    }
+
+    // Chase logic: the cube rolls along the maze grid toward the player's cell.
+    function updateEnemys(dt) {
+      if (levelData.enemies.length === 0) return;
+      const grid = levelData.enemyGrid;
+      if (!grid) return;
+      const cell = CONFIG.cellSize;
+      const centerCol = levelData.centerCol;
+      const r = CONFIG.ballRadius + 0.42; // catch distance
+
+      // Where is the player relative to the A-island grid?
+      const pCol = Math.round((ball.position.x - levelData.enemyACenterX) / cell + centerCol);
+      const pRow = Math.round(ball.position.z / cell + centerCol);
+      const onGrid = grid[pRow] && grid[pRow][pCol] === 0;
+
+      for (const e of levelData.enemies) {
+        // Guard against any NaN/infinite drifting coordinates
+        if (!isFinite(e.x) || !isFinite(e.z)) {
+          e.x = e.homeX; e.z = e.homeZ;
+          e.mesh.position.set(e.x, e.mesh.position.y, e.z);
+        }
+        const dToBall = Math.hypot(e.x - ball.position.x, e.z - ball.position.z);
+
+        // A dormant cube (either a sleeping dead-end cube, or a chaser that has
+        // given up and gone back to its base): keep it small, dim and still in
+        // its alcove until the player draws near, then wake it into a chaser.
+        if (e.sleeping) {
+          e.mesh.position.set(e.x, 0.4, e.z);
+          e.mesh.quaternion.identity();
+          e.mesh.visible = true;
+          e.mesh.scale.set(0.6, 0.6, 0.6);
+          e.mesh.material.emissiveIntensity = 0.08 + 0.04 * (0.5 + 0.5 * Math.sin(performance.now() / 800));
+          if (dToBall < e.wakeR * cell) {
+            e.sleeping = false;
+            e.active = true;
+            e.returning = false;
+            e.chaseT = 0;
+            e.spawnT = 0.35;     // pop-in as it springs to full size
+            e.mesh.visible = true;
+            startChaserSound();
+          }
+          continue;
+        }
+
+        // Wait the short delay, then start chasing the player.
+        if (!e.active) {
+          if (!transitioning) {
+            e.delay -= dt;
+            if (e.delay <= 0) {
+              e.active = true;
+              e.spawnT = 0.35;   // pop-in duration
+              e.mesh.visible = true;
+              startChaserSound();
+            }
+          }
+          updateChaserSound(0);
+          continue;
+        }
+
+        // Pulse scale/glow with proximity (fast + strong when close). The cube
+        // also "pops in" (grows to full size) over the first moments after it
+        // appears, so its arrival is visible.
+        const prox = Math.max(0, Math.min(1, 1 - dToBall / 5.0));
+        e.pulseTimer += dt * (0.8 + prox * 6);
+        const pulse = 1 + prox * 0.28 * (0.5 + 0.5 * Math.sin(e.pulseTimer));
+        let spawnK = 1;
+        if (e.spawnT > 0) {
+          e.spawnT -= dt;
+          spawnK = Math.min(1, 1 - Math.max(0, e.spawnT) / 0.35);
+        }
+        const s = (0.2 + 0.8 * spawnK) * pulse;
+        e.mesh.scale.set(s, s, s);
+        e.mesh.material.emissiveIntensity = 0.25 + prox * 2.2;
+        updateChaserSound(prox);
+
+        // Fair re-entry grace after a portal crossing: the cube holds still so
+        // it can never be sitting right on the exit waiting to instant-catch you.
+        if (e.grace > 0) {
+          e.grace -= dt;
+          continue;
+        }
+
+        // Rest / return-to-base cycle: the cube will NOT chase forever, so it can
+        // never camp the only exit. After a stretch of pursuit it stands down and
+        // dims for a moment (right then is your chance to slip past), then it
+        // gives up and tromps back to its home. Once back it goes dormant (small
+        // and dim in its alcove) and only springs awake again if you come near.
+        const CHASE_BUDGET = 7.0;  // seconds hunting before it tires
+        const REST_TIME = 2.0;     // how long it stops before heading home
+        if (e.rest) {
+          e.restT -= dt;
+          e.mesh.material.emissiveIntensity = 0.12;
+          updateChaserSound(0);
+          if (e.restT <= 0) { e.rest = false; e.returning = true; e.chaseT = 0; }
+          continue; // resting cubes don't chase and can't catch
+        } else if (e.returning) {
+          // Make for home, ignoring the player. Retrace toward the alcove, then
+          // doze. The cube can't step onto the solution route, so if the way
+          // home is blocked it settles right where it safely stopped.
+          const hc = Math.round((e.homeX - levelData.enemyACenterX) / cell + centerCol);
+          const hr = Math.round(e.homeZ / cell + centerCol);
+          const cr = Math.round(e.z / cell + centerCol);
+          const cc = Math.round((e.x - levelData.enemyACenterX) / cell + centerCol);
+          e.mesh.material.emissiveIntensity = 0.2;
+          updateChaserSound(0);
+          const distHome = Math.abs(cr - hr) + Math.abs(cc - hc);
+          if (distHome <= 1) {
+            dozeEnemy(e);
+          } else if (e.retStall > 1.0) {
+            // Can't make progress toward home (route blocks the last step, or
+            // it's stranded in an off-route pocket) — settle wherever it got.
+            dozeEnemy(e);
+          } else {
+            const before = e.x + ',' + e.z;
+            stepEnemyChase(e, grid, cell, centerCol, dt, false, hr, hc);
+            e.retStall = (e.x + ',' + e.z === before) ? e.retStall + dt : 0;
+          }
+          continue;
+        } else {
+          // Only burn the budget while the cube is actually bearing down.
+          if (e.flipT > 0 || e.waitT > 0 || dToBall < 4.0) e.chaseT += dt;
+          if (e.chaseT >= CHASE_BUDGET) {
+            e.rest = true;
+            e.restT = REST_TIME;
+            e.chaseT = 0;
+            e.roll = 0;
+            continue;
+          }
+        }
+
+        // Decide where the cube should head next, then let the discrete
+        // flipper either run an in-progress tumble, wait its pause, or start a
+        // new single-cell flip (pathfinding is done fresh inside the flipper).
+        if (!onGrid) {
+          // The player left this island (portal): the cube heads back home.
+          const hc = Math.round((e.homeX - levelData.enemyACenterX) / cell + centerCol);
+          const hr = Math.round(e.homeZ / cell + centerCol);
+          stepEnemyChase(e, grid, cell, centerCol, dt, false, hr, hc);
+        } else {
+          stepEnemyChase(e, grid, cell, centerCol, dt, true, pRow, pCol);
+        }
+
+        // Caught the player?
+        const dNow = Math.hypot(e.x - ball.position.x, e.z - ball.position.z);
+        if (dNow < r) {
+          triggerParticles('death', e.mesh.position);
+          sfx('catch');
+          showOverlay('😱 The cube caught you!', 'Roll away before it strikes!', 1.5);
+          resetBall();
+          return;
+        }
+      }
+    }
+
+    // IKU-style chase: the cube moves one cell at a time, tumbling a full 90°,
+    // pausing a beat, then tumbling again. This keeps it perfectly grid-aligned
+    // and flips about a single horizontal world axis per step (no drift).
+    const EN_FLIP = 0.40;   // seconds for one 90° tumble between cells
+    const EN_PAUSE = 0.49;  // seconds paused on a cell before the next tumble
+
+    // Advance the cube through its tumble / pause state machine.
+    //  onGrid: whether the player is on this island (else the cube heads home).
+    //  tr/tc: the player's grid cell (row,col), or the home cell when off-grid.
+    // The cube's own cell is derived fresh from its live world position every
+    // step, so chasing never stalls on stale bookkeeping.
+    function stepEnemyChase(e, grid, cell, centerCol, dt, onGrid, tr, tc) {
+      // In the middle of a tumble — just keep animating it.
+      if (e.flipT > 0) { advanceEnemyFlip(e, dt); return; }
+      // Paused between tumbles — count down the idle beat.
+      if (e.waitT > 0) { e.waitT -= dt; return; }
+
+      const cr = Math.round(e.z / cell + centerCol);                                  // enemy row
+      const cc = Math.round((e.x - levelData.enemyACenterX) / cell + centerCol);      // enemy col
+
+      // Pick the cell we want to end up on THIS step. The cube may never enter
+      // a protected (route) cell, so chases route around the solution corridor.
+      const noGo = levelData.enemyNoGo;
+      const offLimits = (r, c) => noGo && noGo.has(r + ',' + c);
+      let ntr, ntc;
+      if (onGrid) {
+        // Freshly pathfind from the cube's live cell to the player.
+        const from = getPath(grid, cc, cr, tc, tr, noGo);
+        if (!from || from.length === 0) return;      // no route — wait and retry
+        // Walk backwards to the first reachable cell adjacent to where we are.
+        // If that cell is a protected route cell, don't enter it — hold the edge.
+        let found = false;
+        for (let i = from.length - 1; i >= 0; i--) {
+          const c = from[i][0], r = from[i][1];
+          if (Math.abs(r - cr) + Math.abs(c - cc) <= 1) {
+            if (offLimits(r, c)) break;   // the way is blocked by the route — wait
+            ntr = r; ntc = c; found = true; break;
+          }
+        }
+        if (!found) return;
+      } else {
+        // Off-grid: the cube heads back toward its home/alcove cell, still
+        // staying off the solution route.
+        const from = getPath(grid, cc, cr, tc, tr, noGo);
+        if (!from || from.length === 0) return;      // nowhere to retreat — wait
+        let found = false;
+        for (let i = from.length - 1; i >= 0; i--) {
+          const c = from[i][0], r = from[i][1];
+          if (Math.abs(r - cr) + Math.abs(c - cc) <= 1) {
+            if (offLimits(r, c)) break;   // route blocks the way — wait here
+            ntr = r; ntc = c; found = true; break;
+          }
+        }
+        if (!found) return;
+      }
+      if (ntr === cr && ntc === cc) return; // nowhere to go — stay put
+
+      // Guard: a single flip only ever moves to an ADJACENT cell. This both
+      // stops a far target from teleporting in one tumble and keeps the cube
+      // chasing one cell at a time (fair, never unfair to the player).
+      if (Math.abs(ntr - cr) + Math.abs(ntc - cc) > 1) {
+        const dr = Math.sign(ntr - cr), dc = Math.sign(ntc - cc);
+        ntr = cr + dr; ntc = cc + dc;
+      }
+
+      e.cr = cr; e.cc = cc;                     // current cell (start of this flip)
+      startEnemyFlip(e, cell, centerCol, ntr, ntc);
+    }
+
+    // Begin a single-cell flip into grid cell (tr, tc).
+    function startEnemyFlip(e, cell, centerCol, tr, tc) {
+      const centerX = levelData.enemyACenterX;
+      e.fromX = e.x; e.fromZ = e.z;
+      e.toX = centerX + (tc - centerCol) * cell;
+      e.toZ = (tr - centerCol) * cell;
+      let dx = e.toX - e.fromX, dz = e.toZ - e.fromZ;
+      const d = Math.hypot(dx, dz);
+      if (d < 0.0001) { e.flipT = 0; return; }
+      dx /= d; dz /= d;
+      e.dirX = dx; e.dirZ = dz;
+      e.fcr = tr; e.fcc = tc;
+      // Pick the horizontal world axis to rotate about for this step.
+      if (Math.abs(dx) >= Math.abs(dz)) {
+        // rolling along X -> rotate about world Z, +X rolls backward (-90°)
+        e.rollAxis = new THREE.Vector3(0, 0, 1);
+        e.rollSign = -Math.sign(dx);
+      } else {
+        // rolling along Z -> rotate about world X, +Z rolls forward (+90°)
+        e.rollAxis = new THREE.Vector3(1, 0, 0);
+        e.rollSign = Math.sign(dz);
+      }
+      e.flipT = EN_FLIP;
+      e.waitT = 0;
+    }
+
+    // Animate an in-progress tumble. The quaternion is recomputed fresh every
+    // frame from the base aligned state, so the cube never accumulates drift.
+    function advanceEnemyFlip(e, dt) {
+      e.flipT -= dt;
+      if (e.flipT < 0) e.flipT = 0;
+      const t = e.flipT > 0 ? 1 - e.flipT / EN_FLIP : 1; // 0 -> 1
+      const k = t * t * (3 - 2 * t);                    // smoothstep easing
+      e.x = e.fromX + (e.toX - e.fromX) * k;
+      e.z = e.fromZ + (e.toZ - e.fromZ) * k;
+      e.mesh.position.set(e.x, e.mesh.position.y, e.z);
+      const ang = e.rollSign * (Math.PI / 2) * t;
+      e.mesh.quaternion.setFromAxisAngle(e.rollAxis, ang);
+      liftCube(e);
+      if (t >= 1) {
+        // Landed: snap to the cell centre, axis-aligned, and rest a beat.
+        e.x = e.toX; e.z = e.toZ;
+        e.cr = e.fcr; e.cc = e.fcc;
+        e.flipT = 0;
+        e.mesh.quaternion.identity();
+        e.mesh.position.set(e.x, 0.4, e.z);
+        e.waitT = EN_PAUSE;
+      }
+    }
+
+    // Lift the cube so its lowest rotated corner always touches the ground.
+    // Rolling about a horizontal axis tips a corner beneath the centre height,
+    // which would otherwise clip through the floor; we compute the box's 8
+    // rotated corners and raise the mesh until the lowest one sits on the plane.
+    function liftCube(e) {
+      const m = e.mesh;
+      const h = 0.4 * m.scale.x; // uniform pop-in/pulse scale shrinks the box
+      const q = m.quaternion;
+      let minY = Infinity;
+      for (let sx = -1; sx <= 1; sx += 2)
+        for (let sy = -1; sy <= 1; sy += 2)
+          for (let sz = -1; sz <= 1; sz += 2) {
+            const v = new THREE.Vector3(sx * h, sy * h, sz * h).applyQuaternion(q);
+            if (v.y < minY) minY = v.y;
+          }
+      m.position.y = -minY;
     }
 
     function physicsUpdate(dt) {
@@ -1499,6 +2144,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
           if (velocity.y < 1) {
             velocity.y = CONFIG.jumpBoost;
             triggerParticles('jump', ball.position);
+            sfx('jump');
           }
         }
       }
@@ -1527,6 +2173,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       }
       if (ball.position.y < -6) {
         triggerParticles('death', ball.position);
+        sfx('boom');
         resetBall();
         showOverlay('💀 Rolled off the maze!', 'Mind the gaps in the walls!', 1.4);
         return;
@@ -1554,12 +2201,23 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
           }
 
           if (!canPass) {
+            // Capture the approach speed before the bounce so we can tell a
+            // gentle nudge from a hard slam (and add a flourish for the latter).
+            const impactVx = velocity.x, impactVz = velocity.z;
             if (overlapX < overlapZ) {
               ball.position.x += Math.sign(dx) * overlapX;
               velocity.x *= -0.2;
             } else {
               ball.position.z += Math.sign(dz) * overlapZ;
               velocity.z *= -0.2;
+            }
+            const impactSpeed = Math.hypot(impactVx, impactVz);
+            if (impactSpeed > 3.5) {
+              const now = performance.now();
+              if (now - lastImpactSound > 150) {
+                lastImpactSound = now;
+                sfx('impact', Math.min(1, (impactSpeed - 3.5) / 7));
+              }
             }
           }
 
@@ -1568,6 +2226,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
               levelGroup.remove(wall);
               levelData.walls.splice(i, 1);
               triggerParticles('electric', wPos);
+              sfx('boom');
               resetBall();
               showOverlay('⚡ BOOM!', 'Electric wall exploded!', 1.2);
               return;
@@ -1588,6 +2247,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
             ballColor = dot.color;
             ball.material.color.set(dot.color === 'blue' ? 0x2244ff : 0xccccdd);
             triggerParticles('switch', ball.position, dot.color === 'blue' ? 0x2244ff : 0x888888);
+            sfx('pickup');
           }
         }
       }
@@ -1606,8 +2266,12 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
             const dest = pair[0];
             p.lastUse = nowMs; dest.lastUse = nowMs;
             triggerParticles('portal', ball.position, 0x44ff88);
+            sfx('portal');
             ball.position.set(dest.x, CONFIG.ballRadius, dest.z);
             velocity.multiplyScalar(0.5);
+            // Fairness: free the chasers for a moment after the crossing so a
+            // cube can't camp the exit and instantly catch the player on return.
+            for (const en of levelData.enemies) if (en.active) en.grace = 2.0;
             // Snap the camera straight to the destination so a crossing feels like
             // stepping across the void, not a slow swing through empty space. Use
             // the rendered (world) position so the tilt-offset ball is centered.
@@ -1622,11 +2286,14 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
         }
       }
 
+      updateEnemys(dt);
+
       const goalDist = Math.hypot(ball.position.x - levelData.goalPos.x, ball.position.z - levelData.goalPos.z);
       if (goalDist < 0.6 && !transitioning) {
         winTimer += dt;
         if (winTimer >= CONFIG.winHoldTime) {
           winTimer = 0;
+          sfx('win');
           if (currentLevel < totalLevels) {
             const completed = currentLevel;
             transitioning = true;
@@ -1865,6 +2532,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
 
       btnStart.addEventListener('click', () => {
         if (Object.keys(connections).length === 0) return;
+        ensureAudio();
         gameStarted = true;
         gameActive = true;
         transitioning = false;
@@ -2056,6 +2724,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
               gameActive: gameActive,
               ballColor: ballColor,
               stats: hostStats,
+              enemies: levelData.enemies.map(e => ({ x: e.x, z: e.z, active: e.active })),
             };
         }
         for (let pid in connections) {
@@ -2081,6 +2750,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
 
       // SMOOTHING VARIABLES
       let targetPos = new THREE.Vector3(0, CONFIG.ballRadius, 0);
+      let enemyTargets = []; // { x, z } per enemy, from host state
       let targetRotX = 0, targetRotZ = 0;
 
       let clientPeer = new Peer();
@@ -2128,6 +2798,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
             targetPos.z = data.ballZ;
             targetRotX = data.rotX;
             targetRotZ = data.rotZ;
+            if (data.enemies) enemyTargets = data.enemies;
             
             if (data.ballColor) {
               ballColor = data.ballColor;
@@ -2198,6 +2869,13 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
           ball.position.x += (targetPos.x - ball.position.x) * 0.3;
           ball.position.y += (targetPos.y - ball.position.y) * 0.3;
           ball.position.z += (targetPos.z - ball.position.z) * 0.3;
+        }
+
+        // Run the SAME enemy chase the host uses, locally toward the (locally
+        // interpolated) ball. This drives the cube's activation, flips, pulse
+        // and catch — so it chases reliably even in a client tab.
+        if (!titleGroup.visible) {
+          updateEnemys(1/60);
         }
 
         // Keep the ball glow following the ball (host does this in physics)

@@ -18,10 +18,10 @@
     padding:9px 12px;font-family:inherit;font-size:14px;margin:3px;cursor:pointer}
   button:hover{border-color:#8a93a6;color:#fff}
   #hostPanel{margin-top:14px;border:1px solid #2a2f3a;padding:14px;min-width:280px}
-  #hpl{font-size:10px;color:#7a8291;letter-spacing:2px}
-  #hostCode{font-size:30px;letter-spacing:8px;color:#ffe9c4;margin:6px 0 2px}
+  #hpl{font-size:12px;color:#cfd3da;letter-spacing:3px}
+  #hostCode{font-size:56px;letter-spacing:12px;color:#fff;margin:10px 0 4px;
+    font-weight:bold;text-shadow:0 0 18px rgba(255,255,255,.35)}
   #hostCount{font-size:11px;color:#8a93a6;margin-bottom:8px}
-  #hostInvite{font-size:10px;color:#565d6b;word-break:break-all;margin-bottom:6px}
   #status{font-size:11px;color:#7a8291;margin-top:10px;min-height:14px}
   #hud{position:absolute;top:12px;left:16px;right:16px;display:flex;
     justify-content:space-between;font-size:12px;letter-spacing:1px;
@@ -33,13 +33,6 @@
   #syncBar{background:#ffca7a}#hpBar{background:#7dff9a}
   #hint{position:absolute;bottom:10px;width:100%;text-align:center;
     font-size:11px;color:#565d6b;pointer-events:none;letter-spacing:1px}
-  #invRow{margin-top:6px;color:#565d6b;font-size:10px;letter-spacing:1px}
-  #invite{color:#8a93a6;cursor:pointer}
-  #invite:hover{color:#ffe9c4}
-  #bCopy{background:transparent;border:1px solid #2a2f3a;color:#8a93a6;
-    cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:1px;
-    margin-left:6px;padding:1px 8px}
-  #bCopy:hover{color:#ffe9c4;border-color:#ffe9c4}
   #deadMsg{position:absolute;top:40%;width:100%;text-align:center;font-size:16px;
     color:#ff6a5a;letter-spacing:3px;display:none;text-shadow:0 0 12px #000}
   #winMsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
@@ -80,8 +73,6 @@
     <div id="hpl">HOSTING · ROOM CODE</div>
     <div id="hostCode">—</div>
     <div id="hostCount">PLAYERS READY: 0</div>
-    <div id="hostInvite"></div>
-    <button id="bCopyH">COPY LINK</button>
     <button id="bStart">START</button>
   </div>
   <div id="status">ready</div>
@@ -91,7 +82,6 @@
   <div><b id="hKeys"></b> HP<span class="bar"><i id="hpBar"></i></span>
      <span id="hDoor">DOOR: DARK</span>
      <span class="bar"><i id="syncBar"></i></span>SYNC</div>
-  <div id="invRow" class="hidden"><span id="invite"></span><button id="bCopy">COPY LINK</button></div>
 </div>
 <div id="hint" class="hidden">WASD move · mouse aims · bridges cross water · light freezes guardians · shine ON the door to open it</div>
 <div id="deadMsg">YOU DIED — spectating until next depth</div>
@@ -618,16 +608,14 @@ function hostGame(){
   S.room=rndCode();S.isHost=true;
   const nm=$('pname').value.trim().toUpperCase()||'HOST';
   $('joinBox').classList.add('hidden');
-  const panel=$('hostPanel'),codeEl=$('hostCode'),cnt=$('hostCount'),inv=$('hostInvite');
+  const panel=$('hostPanel'),codeEl=$('hostCode'),cnt=$('hostCount');
   panel.classList.remove('hidden');
   codeEl.textContent='…';
   cnt.textContent='PLAYERS READY: 0';
-  inv.textContent='';
-  const invite=()=>location.href.split(/[?#]/)[0]+'?r='+S.room;
   function updateCount(){
     const n=S.conns.size;
-    cnt.textContent='PLAYERS READY: '+n+(n?'':' — waiting for players');
-    inv.textContent=invite();}
+    codeEl.textContent=S.room;
+    cnt.textContent='PLAYERS READY: '+n+(n?'':' — waiting for players');}
   S.peer=new Peer('illuminate-'+S.room,{debug:0});
   S.peer.on('open',id=>{
     S.myId=id;S.names[id]=nm;
@@ -667,23 +655,10 @@ function hostStart(){
       S.cave.spawn.x+(Math.random()-0.5)*60,S.cave.spawn.y+(Math.random()-0.5)*60);
     conn.send({t:'init',seed:S.seed,level:S.level,names:S.names,
       p:packPlayers(),e:packEnemies(),k:packKeys(),door:S.door});});
-  const invite=location.href.split(/[?#]/)[0]+'?r='+S.room;
-  const ir=$('invite'),iv=$('invRow');
-  if(ir){ir.textContent=invite;iv&&iv.classList.remove('hidden');}
   $('hostPanel').classList.add('hidden');
-  setStatus('room open — share the invite link');
+  setStatus('room open — game started');
   startGame();startHostLoops();}
 $('bStart').onclick=hostStart;
-$('bCopyH').onclick=()=>{
-  const link=location.href.split(/[?#]/)[0]+'?r='+S.room;
-  if(navigator.clipboard)navigator.clipboard.writeText(link).catch(()=>{});
-  $('bCopyH').textContent='COPIED';
-  setTimeout(()=>$('bCopyH').textContent='COPY LINK',1200);};
-$('bCopy').onclick=()=>{
-  const invite=$('invite').textContent;
-  if(navigator.clipboard&&invite)navigator.clipboard.writeText(invite).catch(()=>{});
-  $('bCopy').textContent='COPIED';
-  setTimeout(()=>$('bCopy').textContent='COPY LINK',1200);};
 
 function joinGame(code){
   if(code.length<4)return setStatus('enter the 4-letter code');

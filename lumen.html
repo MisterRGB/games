@@ -17,6 +17,7 @@
   input,button{background:#0b0d12;border:1px solid #333a48;color:#cfd3da;
     padding:9px 12px;font-family:inherit;font-size:14px;margin:3px;cursor:pointer}
   button:hover{border-color:#8a93a6;color:#fff}
+  #bHost{display:none}
   #hostPanel{margin-top:14px;border:1px solid #2a2f3a;padding:14px;min-width:280px}
   #hpl{font-size:12px;color:#cfd3da;letter-spacing:3px}
   #hostCode{font-size:56px;letter-spacing:12px;color:#fff;margin:10px 0 4px;
@@ -75,7 +76,7 @@
     <div id="hostCount">PLAYERS READY: 0</div>
     <button id="bStart">START</button>
   </div>
-  <div id="status">ready</div>
+  <div id="status">ready · hosting: open this page with <b>?host=true</b></div>
 </div>
 <div id="hud" class="hidden">
   <div>ROOM <b id="hRoom"></b> · <b id="hCount">0</b> ALIVE · DEPTH <b id="hLvl">1</b>/25</div>

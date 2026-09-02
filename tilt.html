@@ -235,7 +235,7 @@
     <div style="font-size:0.75rem; opacity:0.6; margin-top:2px;">Share this ID – click to copy:</div>
     <div class="host-id" id="hostIdDisplay">connecting…</div>
     <button class="btn-start" id="btnStart" disabled>▶ Start Game</button>
-    <div class="client-count" id="clientCount">👥 Connected: 0</div>
+    <div class="client-count" id="clientCount">👥 Players: 1</div>
     <div class="host-levels" id="hostLevels"></div>
   </div>
 
@@ -291,13 +291,18 @@
       cellSize: 1.2,
       wallHeight: 0.5,
       winHoldTime: 1.0,
-      jumpBoost: 6.0,
+      jumpBoost: 7.5,
+      jumpGravity: 15.0,
+      greenBoostAccel: 14.0,
+      greenBoostTime: 2.0,
+      greenBoostCap: 9.0,
       totalLevels: 30,
       cameraHeight: 6.0,
       cameraFollowZ: 6.0,
     };
 
     let ballColor = 'neutral';
+    let greenBoost = 0;
 
     // =========================================================================
     // 1.  TITLE SCREEN BUILD ("Tilt Collective" in Wall Blocks)
@@ -306,6 +311,10 @@
     scene.add(titleGroup);
     let titleRotOffset = 0; // user-controlled yaw offset (clamped)
     let titleTiltOffset = 0; // user-controlled tilt offset (clamped)
+
+    // Dev-mode camera: drag orbits the ball, wheel zooms away for a wider view.
+    let devMode = false;
+    let camDist = 1.0, camYaw = 0, camElev = 0, camDragging = false, camLastX = 0, camLastY = 0;
 
     // 5x7 Block font map
     const fontData = {
@@ -382,9 +391,17 @@
     }
     buildTitle();
 
-    // Drag to rotate and tilt the title (clamped), only while the title is on screen
+    // Drag to rotate and tilt the title (clamped), only while the title is on screen.
+    // In dev mode during gameplay, drag instead orbits the camera around the ball
+    // and the wheel zooms out to see more of the maze.
     let isDraggingTitle = false, lastMouseX = 0, lastMouseY = 0;
     renderer.domElement.addEventListener('mousedown', (e) => {
+      if (devMode && !titleGroup.visible) {
+        camDragging = true;
+        camLastX = e.clientX;
+        camLastY = e.clientY;
+        return;
+      }
       if (titleGroup.visible) {
         isDraggingTitle = true;
         lastMouseX = e.clientX;
@@ -392,6 +409,15 @@
       }
     });
     window.addEventListener('mousemove', (e) => {
+      if (camDragging) {
+        const dx = e.clientX - camLastX;
+        const dy = e.clientY - camLastY;
+        camYaw += dx * 0.01;
+        camElev = Math.max(-3, Math.min(10, camElev - dy * 0.05));
+        camLastX = e.clientX;
+        camLastY = e.clientY;
+        return;
+      }
       if (isDraggingTitle) {
         const dx = e.clientX - lastMouseX;
         const dy = e.clientY - lastMouseY;
@@ -401,7 +427,23 @@
         lastMouseY = e.clientY;
       }
     });
-    window.addEventListener('mouseup', () => { isDraggingTitle = false; });
+    window.addEventListener('mouseup', () => { isDraggingTitle = false; camDragging = false; });
+    window.addEventListener('wheel', (e) => {
+      if (devMode && !titleGroup.visible) {
+        e.preventDefault();
+        camDist = Math.max(0.5, Math.min(5, camDist * (e.deltaY > 0 ? 1.12 : 0.9)));
+      }
+    }, { passive: false });
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'F3') {
+        setDevMode(!devMode);
+        console.log('Dev camera:', devMode ? 'ON — drag=orbit, wheel=zoom, F3 or level-grid to exit' : 'OFF');
+      }
+    });
+    function setDevMode(on) {
+      devMode = on;
+      if (!devMode) { camDist = 1.0; camYaw = 0; camElev = 0; }
+    }
 
     // =========================================================================
     // 2.  SEEDED RNG & MAZE
@@ -656,12 +698,13 @@
     // 5.  LEVEL BUILDER & SERIALIZER
     // =========================================================================
     let levelData = {
-      walls: [], electricWalls: [], portals: [], jumpPads: [], barriers: [], colorSwitches: [], enemies: [],
+      walls: [], electricWalls: [], portals: [], jumpPads: [], barriers: [], colorSwitches: [],
+      boostTiles: [], iceTiles: [], jumpWalls: [], enemies: [],
       startPos: new THREE.Vector3(0,0,0),
       goalPos: new THREE.Vector3(0,0,0),
       size: 0, goalMesh: null,
       dual: false, mazeHalf: 0, viewHalf: 0, gapHalf: 0,
-      enemyGrid: null, centerCol: 0,
+      enemyGrid: null, centerCol: 0, enemyProtect: null,
     };
     const levelGroup = new THREE.Group();
     tableGroup.add(levelGroup);
@@ -688,9 +731,15 @@
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x8a7a5a, roughness: 0.7, metalness: 0.1 });
     const electricMat = new THREE.MeshStandardMaterial({ color: 0xff2244, emissive: 0xff0044, emissiveIntensity: 0.6 });
     const barrierMatBlue = new THREE.MeshStandardMaterial({ color: 0x2244ff, emissive: 0x0022aa, emissiveIntensity: 0.5 });
-    const colorDotMats = { blue: new THREE.MeshStandardMaterial({ color: 0x2244ff, emissive: 0x2244ff, emissiveIntensity: 0.7 }) };
+    const barrierMatGreen = new THREE.MeshStandardMaterial({ color: 0x22ff44, emissive: 0x00aa22, emissiveIntensity: 0.5 });
+    const colorDotMats = {
+      blue: new THREE.MeshStandardMaterial({ color: 0x2244ff, emissive: 0x2244ff, emissiveIntensity: 0.7 }),
+      green: new THREE.MeshStandardMaterial({ color: 0x22ff44, emissive: 0x22ff44, emissiveIntensity: 0.7 }),
+    };
     const portalMat = new THREE.MeshStandardMaterial({ color: 0x44ff88, emissive: 0x00aa44, emissiveIntensity: 0.4 });
     const jumpMat = new THREE.MeshStandardMaterial({ color: 0x44aaff, emissive: 0x0044aa, emissiveIntensity: 0.3 });
+    const boostMat = new THREE.MeshStandardMaterial({ color: 0x44ff88, emissive: 0x00ff66, emissiveIntensity: 0.55 });
+    const iceMat = new THREE.MeshStandardMaterial({ color: 0xbfefff, emissive: 0x66ccff, emissiveIntensity: 0.15, roughness: 0.05, metalness: 0.3 });
     const floorMat = new THREE.MeshStandardMaterial({ map: gridTex, color: 0xffffff, roughness: 0.85, metalness: 0.05 });
     const goalMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.5 });
     const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff5533, emissive: 0xff2200, emissiveIntensity: 0.25, roughness: 0.4, metalness: 0.1 });
@@ -712,6 +761,8 @@
         particles.emit(40, pos, color, 0.8, 4.0, 1.5, 1.0);
       } else if (type === 'jump') {
         particles.emit(40, pos, 0x44aaff, 0.4, 2.5, 1.2, 0.8);
+      } else if (type === 'boost') {
+        particles.emit(30, pos, 0x22ff44, 0.3, 3.5, 1.5, 0.9);
       }
     }
 
@@ -722,6 +773,7 @@
       floorMeshes.length = 0;
       levelData.walls = []; levelData.electricWalls = [];
       levelData.portals = []; levelData.jumpPads = []; levelData.barriers = []; levelData.colorSwitches = [];
+      levelData.boostTiles = []; levelData.iceTiles = []; levelData.jumpWalls = [];
       levelData.enemies = []; levelData.enemyGrid = null;
     }
 
@@ -730,8 +782,7 @@
       if (levelNum <= 5) size = 5 + (levelNum - 1) * 2;
       else if (levelNum <= 10) size = 13 + (levelNum - 6) * 2;
       else if (levelNum <= 15) size = 17 + (levelNum - 11) * 2;
-      else if (levelNum <= 20) size = 21 + (levelNum - 16) * 2;
-      else size = 25;
+      else size = 25; // stamina curve holds at the big board through 16-23, then stays large into the twin islands
       if (size < 5) size = 5;
       if (size > 25) size = 25;
       if (size % 2 === 0) size++;
@@ -867,6 +918,33 @@
       return entry;
     }
 
+    function addJumpPad(x, z) {
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.05, 16), jumpMat);
+      pad.position.set(x, 0.0, z);
+      levelGroup.add(pad);
+      const entry = { x, z, radius: 0.35, last: 0 };
+      levelData.jumpPads.push(entry);
+      return entry;
+    }
+
+    function addBoostTile(x, z) {
+      const tile = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.04, 20), boostMat);
+      tile.position.set(x, 0.01, z);
+      levelGroup.add(tile);
+      const entry = { x, z, radius: 0.28, last: 0 };
+      levelData.boostTiles.push(entry);
+      return entry;
+    }
+
+    function addIceTile(x, z) {
+      const tile = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.04, 20), iceMat);
+      tile.position.set(x, 0.01, z);
+      levelGroup.add(tile);
+      const entry = { x, z, radius: 0.28 };
+      levelData.iceTiles.push(entry);
+      return entry;
+    }
+
     // -- CHASER ENEMY ("rolly cube") helpers ------------------------------
     // Find a dead-end alcove recess just off the corridor, deep enough that the
     // player won't trip the trigger at spawn but close to the route it sits on,
@@ -918,6 +996,24 @@
       const crit = maze.critPath || maze.path;
       if (crit) for (const [c, r] of crit) set.add(r + ',' + c);
       set.add('1,1'); // the entrance — never let a cube camp your spawn
+      return set;
+    }
+
+    // The cells a chasing cube must NEVER camp: the entrance, the colour-press
+    // switch, the portals, and the goal. During an on-grid pursuit the cube is
+    // otherwise free to chase anywhere (including the solution route) — that is
+    // what lets a woken sleeper actually hunt you down instead of stalling at
+    // the edge of its alcove. The full route ban above still applies to the
+    // return-home/off-grid behaviour.
+    function buildEnemyProtect(maze, portalA, portalB, switchCell) {
+      const set = new Set();
+      const addRing = (r, c, rad) => {
+        for (let dr = -rad; dr <= rad; dr++) for (let dc = -rad; dc <= rad; dc++) set.add((r + dr) + ',' + (c + dc));
+      };
+      addRing(1, 1, 1); // the entrance (and the corridor cells right outside it)
+      for (const pc of [portalA, portalB]) if (pc) addRing(pc[1], pc[0], 2);
+      if (switchCell) addRing(switchCell[1], switchCell[0], 1);
+      if (maze.goalCell) addRing(maze.goalCell[1], maze.goalCell[0], 1);
       return set;
     }
 
@@ -1007,7 +1103,7 @@
         path: null, node: 0,
         curlc: null, curlr: null,
         roll: 0,
-        speed: 1.12,          // cells per second — brisk but outrunnable
+        speed: 1.79,          // cells per second (0.28 flip + 0.28 pause) — relentless
         pulseTimer: 0,
         soundOn: false,
         cr: 0, cc: 0,        // current grid cell (row, col) the cube rests on
@@ -1100,7 +1196,7 @@
       const centerCol = (size - 1) / 2;
       const cell = CONFIG.cellSize;
       const mazeHalf = (size - 1) / 2 * cell;
-      const dual = levelNum >= 16;
+      const dual = levelNum >= 24; // 16-23 stay on one large board: jump walls, electric and gates ramp the difficulty instead
       const gapWidth = dual ? cell : 0;
       const gapHalf = gapWidth / 2;
       const viewHalf = dual ? 2 * mazeHalf + gapWidth : mazeHalf;
@@ -1112,9 +1208,9 @@
       levelData.dual = dual;
 
       const gapCount = levelNum <= 2 ? 0 : (levelNum <= 6 ? 1 : (levelNum <= 12 ? 2 : 3));
-      const electricActive = (levelNum >= 6 && levelNum <= 15) || levelNum >= 20;
+      const electricActive = levelNum >= 6; // on from 6, keeps the 16-23 single board spicy
 
-      // Build the maze island(s). Level 16+ gets a second island joined by portals.
+      // Build the maze island(s). Level 24+ gets a second island joined by portals.
       const mazes = [];
       for (let v = 0; v < (dual ? 2 : 1); v++) {
         const m = generateMaze(size, makeRng(levelNum, v));
@@ -1129,9 +1225,10 @@
 
       // Barrier blocks the winning path until the ball turns blue via the switch.
       let barrierCell = null;
+      let blueGateIdx = null;
       if (levelNum >= 10) {
-        const pi = Math.min(mazeA.path.length - 1, Math.floor(mazeA.path.length * 0.6));
-        barrierCell = mazeA.path[pi];
+        blueGateIdx = Math.min(mazeA.path.length - 1, Math.floor(mazeA.path.length * 0.6));
+        barrierCell = mazeA.path[blueGateIdx];
       }
 
       // Row-aligned portal gateways. Each pair sits on the SAME odd row (maze
@@ -1224,13 +1321,141 @@
         }
       }
 
+      // Second colour lock (green) from level 20: the green gate sits far down
+      // the winning run and its dot only exists PAST the blue gate, so the
+      // sequence is always blue dot → blue gate → green dot → green gate → goal.
+      let barrierCell2 = null, switchCell2 = null, switchMaze2 = null;
+      if (levelNum >= 20) {
+        const pi2 = Math.min(mazeA.path.length - 1, Math.floor(mazeA.path.length * 0.85));
+        if (blueGateIdx !== null && pi2 > blueGateIdx + 2 && pi2 < mazeA.path.length - 2) {
+          barrierCell2 = mazeA.path[pi2];
+          switchMaze2 = mazeA;
+          const pastBlue = mazeA.path[Math.min(mazeA.path.length - 1, blueGateIdx + 2)];
+          switchCell2 = pickDetourCell(mazeA, makeRng(levelNum, 6), mazeA.path, barrierCell2, pastBlue, 2, [barrierCell, switchCell, portalA]);
+        }
+      }
+
+      // -- jump-over walls (levels 16+): a wall right across a corridor on the
+      // solution route. Corridors are one cell wide, so the wall splits the maze
+      // at ground level: the ONLY way through is a jump pad placed next to it —
+      // the hop stops being a bonus shortcut and becomes the puzzle itself. The
+      // wall is rendered exactly like a normal maze wall (no tell-tale colour),
+      // so the pads flanking it are the cue. Placement seats each wall in the
+      // middle of the longest natural straight that hosts its slot, so wall+pads
+      // read as part of the maze, not a bolt-on gate. Two pads flank every wall
+      // (one per side) so the leap is never one-way.
+      levelData.jumpWalls = [];
+      const jwCellSet = new Set();   // reserved cells (walls + pads + approach)
+      const jumpSlots = [
+        { frac: 0.58 },
+        { frac: 0.72 },
+        { frac: 0.86 },
+      ];
+      const jwCount = levelNum >= 27 ? 3 : (levelNum >= 22 ? 2 : (levelNum >= 16 ? 1 : 0));
+      const pi2Idx = (levelNum >= 20 && barrierCell2 && mazeA.path.length)
+        ? Math.floor(mazeA.path.length * 0.85) : null;
+      if (jwCount > 0 && mazeA.path.length > 16) {
+        const resv = new Set();
+        const markResv = (r, c) => resv.add(r + ',' + c);
+        if (barrierCell) markResv(barrierCell[1], barrierCell[0]);
+        if (barrierCell2) markResv(barrierCell2[1], barrierCell2[0]);
+        if (switchCell) markResv(switchCell[1], switchCell[0]);
+        if (switchCell2) markResv(switchCell2[1], switchCell2[0]);
+        if (portalA) markResv(portalA[1], portalA[0]);
+        if (portalB) markResv(portalB[1], portalB[0]);
+        markResv(mazeA.goalCell[1], mazeA.goalCell[0]);
+        // The band sits strictly past the blue gate (and short of the green gate
+        // on levels 20+) so gates keep the color puzzles intact and a jump can
+        // never strand the player on the far side of an unopened gate.
+        const loBound = Math.max(blueGateIdx !== null ? blueGateIdx + 3 : 5, 6);
+        const hiBound = (pi2Idx !== null ? pi2Idx - 2 : mazeA.path.length - 4);
+        const isTurn = [];
+        for (let j = 0; j < mazeA.path.length; j++) {
+          const p = mazeA.path[j - 1], q = mazeA.path[j + 1];
+          isTurn[j] = (p && q) && ((mazeA.path[j][0] - p[0] !== q[0] - mazeA.path[j][0]) || (mazeA.path[j][1] - p[1] !== q[1] - mazeA.path[j][1]));
+        }
+        let lastIdx = -1e9;
+        // Maximal straight-run bounds per path index: each wall is centred in the
+        // natural corridor that hosts it instead of being slapped on an arbitrary
+        // 3-cell straight, so pads+wall fill the whole hall like a designed gate.
+        const runLo = [], runHi = [];
+        for (let j = 0; j < mazeA.path.length; j++) {
+          if (isTurn[j]) { runLo[j] = j; runHi[j] = j; continue; }
+          let a = j; while (a - 1 >= 0 && !isTurn[a - 1]) a--;
+          let b = j; while (b + 1 < mazeA.path.length && !isTurn[b + 1]) b++;
+          runLo[j] = a; runHi[j] = b;
+        }
+        const jwRng = makeRng(levelNum, 7);
+        for (let s = 0; s < jwCount; s++) {
+          const target = Math.min(Math.max(Math.floor(mazeA.path.length * jumpSlots[s].frac), loBound), hiBound);
+          let chosen = null, bestScore = -1e9;
+          for (let d = 0; d <= 12; d++) {
+            for (const i of [target + d, target - d]) {
+              if (i < loBound || i > hiBound) continue;
+              if (i - lastIdx < 8) continue;
+              const c = mazeA.path[i], p = mazeA.path[i - 1], q = mazeA.path[i + 1], r = mazeA.path[i - 2];
+              if (!p || !q || !r) continue;
+              // wall + approach + landing all straight along one axis (the ball needs
+              // one open run-up cell before the pad, but a turn before that is fine)
+              if (isTurn[i] || isTurn[i - 1] || isTurn[i + 1]) continue;
+              const key = c[1] + ',' + c[0];
+              if (resv.has(key)) continue;
+              if (resv.has(p[1] + ',' + p[0]) || resv.has(q[1] + ',' + q[0])) continue;
+              if (resv.has(r[1] + ',' + r[0])) continue;
+              // keep off the goal pocket and its runway
+              if (i >= mazeA.path.length - 4) continue;
+              if (Math.abs(c[0] - mazeA.goalCell[0]) + Math.abs(c[1] - mazeA.goalCell[1]) < 3) continue;
+              // Seam score: seat the wall inside a LONG straight in the maze, as
+              // close to its centre as possible, near its intended third of the run.
+              const lo = runLo[i], hi = runHi[i];
+              const runLen = hi - lo + 1;
+              const centreDist = Math.abs(i - (lo + hi) / 2);
+              const score = runLen * 100 - centreDist * 25 - d * 3 + jwRng() * 12;
+              if (score > bestScore) { bestScore = score; chosen = { i, c, p, q, r }; }
+            }
+          }
+          if (chosen) {
+            lastIdx = chosen.i;
+            // reserve the whole corridor: run-up, wall, and landing
+            for (const k of [chosen.i - 2, chosen.i - 1, chosen.i, chosen.i + 1, chosen.i + 2]) {
+              const cc = mazeA.path[k];
+              if (cc) { resv.add(cc[1] + ',' + cc[0]); jwCellSet.add(cc[1] + ',' + cc[0]); }
+            }
+            const pA = mazeA.path[chosen.i - 1];
+            const pB = mazeA.path[chosen.i + 1];
+            levelData.jumpWalls.push({
+              r: chosen.c[1], c: chosen.c[0],
+              x: mazeA.centerX + (chosen.c[0] - centerCol) * cell,
+              z: (chosen.c[1] - centerCol) * cell,
+              padX: mazeA.centerX + (pA[0] - centerCol) * cell,
+              padZ: (pA[1] - centerCol) * cell,
+              padBX: mazeA.centerX + (pB[0] - centerCol) * cell,
+              padBZ: (pB[1] - centerCol) * cell,
+            });
+          }
+        }
+        // Belated safety: never let the count exceed what the band allows.
+        while (levelData.jumpWalls.length > 0 && levelData.jumpWalls.length > jwCount) levelData.jumpWalls.pop();
+      }
+      // The jump-wall corridor is a hard floor hazard zone too: never carve a
+      // void gap where a leap might not carry (or a wall a would-be jumper clips).
+      const jumpWallCells = levelData.jumpWalls.map(jw => [jw.r, jw.c]);
+
       // Gaps stay clear of the gadget corridors (barrier / switch / portals), so a
       // rolling ball can never drop off while working the switch or stepping through.
       const gapExclude = [];
       if (barrierCell) gapExclude.push(barrierCell);
+      if (barrierCell2) gapExclude.push(barrierCell2);
       if (switchCell) gapExclude.push(switchCell);
+      if (switchCell2) gapExclude.push(switchCell2);
       if (portalA) gapExclude.push(portalA);
       if (portalB) gapExclude.push(portalB);
+      for (const [jr, jc] of jumpWallCells) {
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          const rr = jr + dr, cc = jc + dc;
+          if (rr >= 1 && rr < size - 1 && cc >= 1 && cc < size - 1) gapExclude.push([cc, rr]);
+        }
+      }
 
       levelData.startPos.set(mazeA.centerX + (1 - centerCol) * cell, 0, (1 - centerCol) * cell);
       levelData.goalPos.set(mazeA.centerX + (mazeA.goalCell[0] - centerCol) * cell, 0, (mazeA.goalCell[1] - centerCol) * cell);
@@ -1286,6 +1511,67 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       }
     }
 
+    // Boost-stretch gap: carve ONE extra border gap on a long straight corridor
+    // so the boost strip runway ends at a momentum hazard — a boosted ball that
+    // doesn't brake rolls straight through the opening and off the edge.
+    let boostGap = null;
+    {
+      const pA = mazeA.path;
+      const isTurnA = [];
+      for (let i = 0; i < pA.length; i++) {
+        const a = pA[i - 1], b = pA[i], c = pA[i + 1];
+        isTurnA[i] = !!(a && c) && ((pA[i][0] - a[0] !== c[0] - pA[i][0]) || (pA[i][1] - a[1] !== c[1] - pA[i][1]));
+      }
+      const reserved = new Set();
+      for (const [jr, jc] of jumpWallCells) reserved.add(jr + ',' + jc);
+      for (const key of carvedGaps) {
+        const pre = key.length > 3 && key[1] === ':' ? key.slice(0, 2) : '';
+        if (pre === 'B:') continue;
+        const bits = (pre ? key.slice(2) : key).split(',');
+        reserved.add(Number(bits[0]) + ',' + Number(bits[1]));
+      }
+      if (barrierCell) reserved.add(barrierCell[1] + ',' + barrierCell[0]);
+      if (barrierCell2) reserved.add(barrierCell2[1] + ',' + barrierCell2[0]);
+      if (switchCell) reserved.add(switchCell[1] + ',' + switchCell[0]);
+      if (switchCell2) reserved.add(switchCell2[1] + ',' + switchCell2[0]);
+      if (portalA) reserved.add(portalA[1] + ',' + portalA[0]);
+      const boostRng = makeRng(levelNum, 20);
+      let best = null;
+      for (let i = 10; i < pA.length - 8; i++) {
+        if (isTurnA[i]) continue;
+        const r = pA[i][1], c = pA[i][0];
+        if (reserved.has(r + ',' + c)) continue;
+        const onBorder = (r === 1 || r === size - 2 || c === 1 || c === size - 2);
+        if (!onBorder) continue;
+        let br, bc;
+        if (r === 1) { br = 0; bc = c; } else if (r === size - 2) { br = size - 1; bc = c; }
+        else if (c === 1) { br = r; bc = 0; } else { br = r; bc = size - 1; }
+        if (mazeA.grid[br][bc] !== 1) continue;
+        const borderKey = 'A:' + br + ',' + bc;
+        if (carvedGaps.has(borderKey)) continue;
+        let run = 0;
+        for (let k = i - 1; k >= 0 && !isTurnA[k]; k--) run++;
+        if (run < 4) continue;
+        const tail = i - run;
+        let free = true;
+        for (let k = tail; k < tail + Math.min(run, 4); k++) {
+          if (reserved.has(pA[k][1] + ',' + pA[k][0])) { free = false; break; }
+        }
+        if (!free) continue;
+        const score = run * 1000 + (i < pA.length * 0.5 ? 500 : 0) + boostRng() * 100;
+        if (!best || score > best.score) best = { i, run, tail, score, borderKey };
+      }
+      if (best) {
+        carvedGaps.add(best.borderKey);
+        boostGap = { idx: best.i, run: best.run, tail: best.tail, br: Number(best.borderKey.split(':').pop().split(',')[0]), bc: Number(best.borderKey.split(':').pop().split(',')[1]) };
+        // Remove the border wall so the boosted run ends at a literal hole in
+        // the landscape (not just a floor opening). The wall sits on region A.
+        for (let iw = wallPositions.length - 1; iw >= 0; iw--) {
+          if (wallPositions[iw].maze === mazeA && wallPositions[iw].row === boostGap.br && wallPositions[iw].col === boostGap.bc) wallPositions.splice(iw, 1);
+        }
+      }
+    }
+
 // Electric "exploding" sections follow a placement policy:
   //  1. near the colour pickup (the walls around the pickup's approach),
   //  2. at the END OF AN INTERSECTION / corner that was NOT carved out as a
@@ -1328,7 +1614,10 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       // --- never right on a gadget ---
       if (Math.abs(1 - w.row) <= 1 && Math.abs(1 - w.col) <= 1) continue;
       if (barrierCell && w.maze === mazeA && mdist(w.row, w.col, barrierCell[1], barrierCell[0]) <= 1) continue;
+      if (barrierCell2 && w.maze === mazeA && mdist(w.row, w.col, barrierCell2[1], barrierCell2[0]) <= 1) continue;
+      if (switchCell2 && w.maze === mazeA && mdist(w.row, w.col, switchCell2[1], switchCell2[0]) <= 1) continue;
       if (switchCell && w.maze === switchMaze && mdist(w.row, w.col, switchCell[1], switchCell[0]) <= 1) continue;
+      if (w.maze === mazeA && jumpWallCells.some(([jr, jc]) => mdist(w.row, w.col, jr, jc) <= 1)) continue;
       if (dual) {
         if (portalA && w.maze === mazeA && mdist(w.row, w.col, portalA[1], portalA[0]) <= 1) continue;
         if (portalB && w.maze === mazeB && mdist(w.row, w.col, portalB[1], portalB[0]) <= 1) continue;
@@ -1409,6 +1698,145 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
         addColorDot(sx, sz, 'blue');
       }
 
+      // -- green lock-and-key (levels 20+) ----------------------------------
+      // barrierCell2 / switchCell2 were chosen earlier (right after the blue
+      // switch): a green barrier sits at ~85% of the route and its green dot
+      // lives in an off-route detour reachable only AFTER the blue gate opens.
+      if (switchCell2) {
+        const gx = mazeA.centerX + (switchCell2[0] - centerCol) * cell;
+        const gz = (switchCell2[1] - centerCol) * cell;
+        addColorDot(gx, gz, 'green');
+      }
+      if (barrierCell2 && switchCell2) {
+        const gbx = mazeA.centerX + (barrierCell2[0] - centerCol) * cell;
+        const gbz = (barrierCell2[1] - centerCol) * cell;
+        const wall = addSolidWall(gbx, gbz, barrierMatGreen, { isBarrier: true, barrierColor: 'green' });
+        levelData.barriers.push({ mesh: wall, x: gbx, z: gbz, color: 'green' });
+      } else if (barrierCell2) {
+        // No detour dot could be found — drop the gate rather than soft-lock.
+        barrierCell2 = null;
+      }
+
+      // -- jump-over walls (16+): plain walls that must be hopped, pad each side --
+      if (levelData.jumpWalls.length) {
+        for (const jw of levelData.jumpWalls) {
+          addSolidWall(jw.x, jw.z, wallMat, { isJumpable: true });
+          addJumpPad(jw.padX, jw.padZ);
+          addJumpPad(jw.padBX, jw.padBZ);
+        }
+      }
+
+      // -- floor gadgetry: jump pads / boost strips / ice patches -------------
+      // Reserved cells: anything the pads and tiles must never sit on or hug
+      // tightly (gadget cells + the mouths of the border gaps).
+      const gadgetCells = new Set();
+      const markCell = (m, r, c) => {
+        const pre = (m && m === mazeB) ? 'B:' : (m === mazeA ? 'A:' : '');
+        gadgetCells.add(pre + r + ',' + c);
+      };
+      const blueSwitchIsland = dual ? mazeB : mazeA;
+      for (const cs of [[barrierCell, mazeA], [barrierCell2, mazeA], [switchCell, blueSwitchIsland], [switchCell2, switchMaze2 || mazeA]]) {
+        if (cs[0]) markCell(cs[1] || mazeA, cs[0][1], cs[0][0]);
+      }
+      if (portalA) markCell(mazeA, portalA[1], portalA[0]);
+      if (portalB) markCell(mazeB, portalB[1], portalB[0]);
+      markCell(mazeA, mazeA.goalCell[1], mazeA.goalCell[0]);
+      for (const cl of jwCellSet) gadgetCells.add('A:' + cl);
+      for (const key of electricCells) gadgetCells.add(key);
+      for (const key of carvedGaps) {
+        const pre = key.startsWith('A:') ? 'A:' : (key.startsWith('B:') ? 'B:' : '');
+        const m = pre === 'B:' ? mazeB : mazeA;
+        const bits = key.slice(pre.length).split(',');
+        const r = Math.min(Math.max(Number(bits[0]), 1), size - 2);
+        const c = Math.min(Math.max(Number(bits[1]), 1), size - 2);
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) markCell(m, r + dr, c + dc);
+      }
+
+      // Finder: a straight (non-turning) run of `need` consecutive path cells,
+      // none of them reserved, picked deterministically from the later half of
+      // the route so gadgetry shows up mid-run rather than at spawn.
+      const findStraightRun = (maze, path, need) => {
+        const isTurn = [];
+        for (let i = 0; i < path.length; i++) {
+          const p = path[i - 1], q = path[i + 1];
+          isTurn[i] = (p && q) && ((path[i][0] - p[0] !== q[0] - path[i][0]) || (path[i][1] - p[1] !== q[1] - path[i][1]));
+        }
+        const lo = Math.floor(path.length * 0.25);
+        const pool = [];
+        for (let i = lo; i + need <= path.length; i++) {
+          let ok = true;
+          for (let k = 0; k < need; k++) {
+            const c = path[i + k];
+            const pre = maze === mazeA ? 'A:' : (maze === mazeB ? 'B:' : '');
+            if (isTurn[i + k] || gadgetCells.has(pre + c[1] + ',' + c[0])) { ok = false; break; }
+          }
+          if (ok) pool.push(i);
+        }
+        return pool.length ? pool[Math.floor(pool.length / 2)] : null;
+      };
+      const cellToWorld = (maze, c, r) => [maze.centerX + (c - centerCol) * cell, (r - centerCol) * cell];
+
+      // Jump pads now exist ONLY at jump walls (placed with the wall above);
+      // each corridor hop needs its pad, so a casual shortcut is replaced by a
+      // deliberate, required leap. Boost strips fling the ball along a straight.
+      const boostCount = levelNum >= 24 ? 3 : (levelNum >= 18 ? 2 : 0);
+      if (boostCount > 0) {
+        let placed = 0;
+        // Preferred placement (18+): the boost tiles ride the runway we carved
+        // (boostGap), ending a few cells short of the border hole. A ball that
+        // doesn't slow sails through the opening — players must pump the brakes.
+        if (levelNum >= 18 && boostGap) {
+          const pA = mazeA.path;
+          const tail = boostGap.tail;
+          const n = Math.min(boostCount, 3, boostGap.run - 2);
+          for (let k = 0; k < n; k++) {
+            const c = pA[tail + k];
+            const [x, z] = cellToWorld(mazeA, c[0], c[1]);
+            addBoostTile(x, z);
+          }
+          // Reserve the whole runway + braking zone so ice / later tiles can't
+          // overlap the momentum trap.
+          for (let kk = tail; kk <= boostGap.idx; kk++) {
+            const cc = pA[kk];
+            if (cc) gadgetCells.add('A:' + cc[1] + ',' + cc[0]);
+          }
+          placed = n;
+        }
+        if (placed === 0) {
+          const idx = findStraightRun(mazeA, mazeA.path, 4);
+          if (idx !== null) {
+            for (let k = 0; k < Math.min(boostCount, 3); k++) {
+              const i = idx + 1 + k;
+              if (i >= mazeA.path.length - 2) break;
+              const c = mazeA.path[i];
+              const key = 'A:' + c[1] + ',' + c[0];
+              if (gadgetCells.has(key)) continue;
+              const [x, z] = cellToWorld(mazeA, c[0], c[1]);
+              addBoostTile(x, z);
+              gadgetCells.add(key);
+            }
+            // Reserve the whole straight so a later run (ice, extra boosts) can't
+            // land on it too.
+            for (let kk = 0; kk < 4; kk++) {
+              const cc = mazeA.path[idx + kk];
+              if (cc) gadgetCells.add('A:' + cc[1] + ',' + cc[0]);
+            }
+          }
+        }
+      }
+
+      // Ice patches: from 22, a slippery 3-cell straight somewhere mid-run.
+      if (levelNum >= 22) {
+        const idx = findStraightRun(mazeA, mazeA.path, 3);
+        if (idx !== null) {
+          for (let k = 0; k < 3; k++) {
+            const c = mazeA.path[idx + k];
+            const [x, z] = cellToWorld(mazeA, c[0], c[1]);
+            addIceTile(x, z);
+          }
+        }
+      }
+
       // Portals (one pair normally, two pairs from level 27).
       if (portalA && portalB) {
         addPortalMesh(mazeA.centerX + (portalA[0] - centerCol) * cell, (portalA[1] - centerCol) * cell, 1);
@@ -1458,14 +1886,30 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       // started and gives chase from level up. Level 15+: several cubes hidden
       // in dead ends that stay asleep until the player gets close, then wake
       // and chase.
+      // Jump-wall cells are solid to roly-cubes too: the chasers need a legal,
+      // grid-based route, so they must route around a jump wall (they can't leap
+      // it) — this also keeps them from clipping through its rail.
       levelData.enemyGrid = mazeA.grid;
+      if (levelData.jumpWalls.length) {
+        const eg = mazeA.grid.map(row => row.slice());
+        for (const jw of levelData.jumpWalls) eg[jw.r][jw.c] = 1;
+        levelData.enemyGrid = eg;
+      }
       levelData.centerCol = centerCol;
       levelData.enemyACenterX = mazeA.centerX;
-      // The cube may NEVER step onto the solution route (the critical path to
-      // the goal) — so it can never camp the only way forward. It patrols the
-      // side pockets, dead ends and alcoves instead.
-      levelData.enemyNoGo = (levelNum >= 8)
+      // Levels 8-14 the single chaser spawns where the player started and must
+      // be free to pursue through the whole maze, so it gets NO route ban — it
+      // could not take a single legal step from the entrance otherwise (its only
+      // open neighbour is the route cell). From level 15 the sleeping alcove
+      // cubes wake when the player draws near and then give REAL chase through
+      // the maze (see buildEnemyProtect): only the handful of critical cells —
+      // spawn, switch, portals, goal — stay off-limits to them, so a cube can
+      // never camp the way forward even though it now hunts you down openly.
+      levelData.enemyNoGo = (levelNum >= 15)
         ? buildEnemyNoGo(mazeA)
+        : null;
+      levelData.enemyProtect = (levelNum >= 15)
+        ? buildEnemyProtect(mazeA, portalA, portalB, switchCell)
         : null;
       if (levelNum >= 15) {
         placeDeadEndEnemies(mazeA, portalA, portalB, levelNum, cell, centerCol);
@@ -1476,29 +1920,13 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
         e.curlr = sr; e.curlc = sc;
       }
 
-      // Frame hugs the real footprint: full A-to-B width in X, but only the
-      // island depth in Z. On dual levels the frame must follow the island
-      // depth, not the wide cross span, or it balloons out into the void.
-      const frameW = viewHalf + 0.06;
-      const frameD = mazeHalf + 0.06;
-      const frameMat = new THREE.MeshStandardMaterial({ color: 0x3f4b7c, metalness: 0.45, roughness: 0.35 });
-      const tb = 0.14, th = 0.34;
-      const frameDefs = [
-        [2 * frameW + tb, th, tb, 0, -frameD],
-        [2 * frameW + tb, th, tb, 0, frameD],
-        [tb, th, 2 * frameD + tb, -frameW, 0],
-        [tb, th, 2 * frameD + tb, frameW, 0],
-      ];
-      for (const [w, h, d, fx, fz] of frameDefs) {
-        const f = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frameMat);
-        f.position.set(fx, h / 2, fz);
-        f.castShadow = true; f.receiveShadow = true;
-        levelGroup.add(f);
-      }
+      // Ball, enemies, and HUD setup follow. The board floats as a clean island
+      // with no outer frame border.
 
       ball.position.set(levelData.startPos.x, CONFIG.ballRadius, levelData.startPos.z);
       velocity.set(0, 0, 0);
       ballColor = 'neutral';
+      greenBoost = 0;
       ball.material.color.set(0xccccdd);
     }
 
@@ -1517,16 +1945,21 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
             walls: levelData.walls.map(w => ({
                 x: w.position.x, z: w.position.z,
                 isElectric: !!w.userData.isElectric,
+                isJumpable: !!w.userData.isJumpable,
                 isBarrier: !!w.userData.isBarrier,
                 barrierColor: w.userData.barrierColor || null
             })),
             colorSwitches: levelData.colorSwitches.map(d => ({ x: d.x, z: d.z, color: d.color })),
             jumpPads: levelData.jumpPads.map(j => ({ x: j.x, z: j.z })),
+            jumpWalls: levelData.jumpWalls.map(jw => ({ x: jw.x, z: jw.z })),
+            boostTiles: levelData.boostTiles.map(t => ({ x: t.x, z: t.z })),
+            iceTiles: levelData.iceTiles.map(t => ({ x: t.x, z: t.z })),
             portals: levelData.portals.map(p => ({ x: p.x, z: p.z, pair: p.pair })),
             enemyGrid: levelData.enemyGrid,
             centerCol: levelData.centerCol,
             enemyACenterX: levelData.enemyACenterX,
             enemyNoGo: levelData.enemyNoGo ? Array.from(levelData.enemyNoGo) : null,
+            enemyProtect: levelData.enemyProtect ? Array.from(levelData.enemyProtect) : null,
             enemies: levelData.enemies.map(e => ({ x: e.homeX, z: e.homeZ, mode: e.mode }))
         };
     }
@@ -1555,9 +1988,12 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
 
       // Walls
       for (let wData of data.walls) {
-        const mat = wData.isBarrier ? barrierMatBlue : (wData.isElectric ? electricMat : wallMat);
+        const mat = wData.isBarrier
+          ? (wData.barrierColor === 'green' ? barrierMatGreen : barrierMatBlue)
+          : (wData.isElectric ? electricMat : wallMat);
         const wall = addSolidWall(wData.x, wData.z, mat, {
           isElectric: !!wData.isElectric,
+          isJumpable: !!wData.isJumpable,
           isBarrier: !!wData.isBarrier,
           barrierColor: wData.barrierColor || null,
         });
@@ -1571,12 +2007,13 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       }
 
       // Jump Pads
-      for (let jData of data.jumpPads) {
-        const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.05, 16), jumpMat);
-        pad.position.set(jData.x, 0.0, jData.z);
-        levelGroup.add(pad);
-        levelData.jumpPads.push({ x: jData.x, z: jData.z, radius: 0.35 });
+      for (let jData of data.jumpPads || []) {
+        addJumpPad(jData.x, jData.z);
       }
+
+      // Boost strips & ice patches
+      for (let bData of data.boostTiles || []) addBoostTile(bData.x, bData.z);
+      for (let iData of data.iceTiles || []) addIceTile(iData.x, iData.z);
 
       // Portals
       for (let pData of data.portals) {
@@ -1592,6 +2029,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
         ? data.enemyACenterX
         : (levelData.dual ? -(levelData.mazeHalf + levelData.gapHalf) : 0);
       levelData.enemyNoGo = data.enemyNoGo ? new Set(data.enemyNoGo) : null;
+      levelData.enemyProtect = data.enemyProtect ? new Set(data.enemyProtect) : null;
       if (data.enemies) {
         for (let eData of data.enemies) {
           addEnemyMesh(eData.x, eData.z, data.level, eData.mode);
@@ -1609,25 +2047,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       goalLight.position.set(levelData.goalPos.x, 0.6, levelData.goalPos.z);
       levelGroup.add(goalLight);
 
-      // Frame hugs the real footprint: full A-to-B width in X, but only the
-      // island depth in Z. On dual levels the frame must follow the island
-      // depth, not the wide cross span, or it balloons out into the void.
-      const frameW = levelData.viewHalf + 0.06;
-      const frameD = levelData.mazeHalf + 0.06;
-      const frameMat = new THREE.MeshStandardMaterial({ color: 0x3f4b7c, metalness: 0.45, roughness: 0.35 });
-      const tb = 0.14, th = 0.34;
-      const frameDefs = [
-        [2 * frameW + tb, th, tb, 0, -frameD],
-        [2 * frameW + tb, th, tb, 0, frameD],
-        [tb, th, 2 * frameD + tb, -frameW, 0],
-        [tb, th, 2 * frameD + tb, frameW, 0],
-      ];
-      for (const [w, h, d, fx, fz] of frameDefs) {
-        const f = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frameMat);
-        f.position.set(fx, h / 2, fz);
-        f.castShadow = true; f.receiveShadow = true;
-        levelGroup.add(f);
-      }
+      // The board floats as a clean island with no outer frame border.
 
       ball.position.set(levelData.startPos.x, CONFIG.ballRadius, levelData.startPos.z);
       velocity.set(0, 0, 0);
@@ -1686,15 +2106,18 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       ball.position.set(levelData.startPos.x, CONFIG.ballRadius, levelData.startPos.z);
       velocity.set(0, 0, 0);
       ballColor = 'neutral';
+      greenBoost = 0;
       ball.material.color.set(0xccccdd);
       resetEnemies();
     }
 
     // -- GAME AUDIO ---------------------------------------------------------
     // One shared AudioContext created on the first user gesture (browser
-    // autoplay policy). Provides short action cues (no constant background hum),
-    // plus the chaser's proximity-driven pulsing drone.
+    // autoplay policy). Everything routes through a soft compressor and a short
+    // feedback echo, and the chaser runs a layered proximity drone (two beating
+    // lows + a filtered noise bed) instead of a static 62Hz buzz.
     let audio = null;
+    let lastImpactSound = 0; // cooldown so hard-wall hits don't rattle
     function ensureAudio() {
       if (audio) {
         if (audio.ctx.state === 'suspended') audio.ctx.resume();
@@ -1703,97 +2126,205 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       if (!window.AudioContext && !window.webkitAudioContext) return null;
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = new AC();
+
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -16;
+      comp.knee.value = 22;
+      comp.ratio.value = 7;
+      comp.attack.value = 0.004;
+      comp.release.value = 0.12;
+
       const master = ctx.createGain();
-      master.gain.value = 0.6;
-      master.connect(ctx.destination);
-      audio = { ctx, master };
+      master.gain.value = 0.62;
+      master.connect(comp);
+      comp.connect(ctx.destination);
+
+      const fxBus = ctx.createGain();
+      fxBus.connect(master);
+
+      const delay = ctx.createDelay(1.0);
+      delay.delayTime.value = 0.27;
+      const damp = ctx.createBiquadFilter();
+      damp.type = 'lowpass'; damp.frequency.value = 2400;
+      const feed = ctx.createGain();
+      feed.gain.value = 0.34;
+      const wet = ctx.createGain();
+      wet.gain.value = 0.30;
+      fxBus.connect(delay);
+      delay.connect(damp); damp.connect(feed); feed.connect(delay);
+      delay.connect(wet); wet.connect(master);
+
+      const noiseBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate), ctx.sampleRate);
+      const nd = noiseBuf.getChannelData(0);
+      for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+
+      audio = { ctx, master, fxBus, noiseBuf };
       return ctx;
+    }
+
+    // One-shot tone: oscillator + attack/decay envelope + shared echo tap.
+    function tone(o) {
+      const ctx = audio.ctx, t = ctx.currentTime;
+      const t0 = isFinite(o.t0) ? o.t0 : 0;
+      const dur = isFinite(o.dur) && o.dur > 0.02 ? o.dur : 0.1;
+      const f = isFinite(o.f) ? o.f : 200;
+      const glide = isFinite(o.glide) ? o.glide : 0;
+      const vol = isFinite(o.vol) ? o.vol : 0.05;
+      const osc = ctx.createOscillator();
+      osc.type = o.type || 'sine';
+      osc.frequency.setValueAtTime(Math.max(20, f), t + t0);
+      if (glide) osc.frequency.exponentialRampToValueAtTime(Math.max(20, glide), t + t0 + dur);
+      if (o.detune) osc.detune.setValueAtTime(o.detune, t + t0);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t + t0);
+      g.gain.linearRampToValueAtTime(vol, t + t0 + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + t0 + dur);
+      osc.connect(g); g.connect(audio.fxBus);
+      osc.start(t + t0); osc.stop(t + t0 + dur + 0.06);
+    }
+
+    // Filtered white-noise burst with sweeping cutoff and loudness envelope.
+    function burst(o) {
+      const ctx = audio.ctx, t = ctx.currentTime;
+      const t0 = isFinite(o.t0) ? o.t0 : 0;
+      const dur = isFinite(o.dur) && o.dur > 0.02 ? o.dur : 0.1;
+      const f0 = isFinite(o.f) ? o.f : 1000;
+      const f1 = (isFinite(o.f1) && o.f1 !== f0) ? o.f1 : 0;
+      const vol = isFinite(o.vol) ? o.vol : 0.05;
+      const src = ctx.createBufferSource();
+      src.buffer = audio.noiseBuf;
+      src.loop = true;
+      const flt = ctx.createBiquadFilter();
+      flt.type = o.kind || 'bandpass';
+      flt.Q.value = isFinite(o.q) ? o.q : 0.7;
+      flt.frequency.setValueAtTime(Math.max(40, f0), t + t0);
+      if (f1) flt.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t + t0 + dur);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t + t0);
+      g.gain.linearRampToValueAtTime(vol, t + t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + t0 + dur);
+      src.connect(flt); flt.connect(g); g.connect(audio.fxBus);
+      src.start(t + t0); src.stop(t + t0 + dur + 0.05);
     }
 
     // One-shot procedural sound effect.
     function sfx(kind, int) {
       const ctx = ensureAudio(); if (!ctx || !audio) return;
       const intensity = isFinite(int) ? Math.max(0, Math.min(1, int)) : 0.5;
-      const t = ctx.currentTime;
-      const note = (type, freq, t0, dur, vol) => {
-        const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq;
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0, t + t0);
-        g.gain.linearRampToValueAtTime(vol, t + t0 + 0.01);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + t0 + dur);
-        o.connect(g); g.connect(audio.master);
-        o.start(t + t0); o.stop(t + t0 + dur + 0.05);
-      };
-      switch (kind) {
-        case 'portal':
-          note('sine', 440, 0, 0.35, 0.14);
-          note('sine', 660, 0.06, 0.35, 0.10);
-          note('sine', 880, 0.12, 0.35, 0.07);
-          break;
-        case 'win':
-          note('sine', 523, 0, 0.4, 0.12);
-          note('sine', 659, 0.12, 0.4, 0.12);
-          note('sine', 784, 0.24, 0.7, 0.15);
-          break;
-        case 'boom':
-          note('sawtooth', 140, 0, 0.35, 0.22);
-          note('sine', 55, 0, 0.5, 0.28);
-          note('sawtooth', 100, 0.04, 0.3, 0.18);
-          break;
-        case 'pickup':
-          note('square', 880, 0, 0.1, 0.08);
-          note('square', 1320, 0.08, 0.12, 0.07);
-          break;
-        case 'catch':
-          note('sawtooth', 220, 0, 0.3, 0.18);
-          note('sawtooth', 110, 0.05, 0.4, 0.22);
-          note('sine', 55, 0.05, 0.45, 0.22);
-          break;
-        case 'jump':
-          note('sine', 300, 0, 0.2, 0.1);
-          note('sine', 500, 0.05, 0.2, 0.08);
-          break;
-        case 'impact': {
-          // Bright percussive flourish when the ball slams a wall hard.
-          const v = 0.6 + intensity * 0.4; // louder for harder hits
-          note('sine', 420, 0, 0.08, 0.10 * v);
-          note('sine', 630, 0.03, 0.1, 0.08 * v);
-          note('sine', 840, 0.06, 0.13, 0.06 * v);
-          note('triangle', 210, 0, 0.16, 0.13 * v);
-          break;
-        }
+      if (kind === 'portal') {
+        tone({ type: 'sine', f: 660, dur: 0.5, vol: 0.12 });
+        tone({ type: 'sine', f: 880, t0: 0.07, dur: 0.5, vol: 0.10 });
+        tone({ type: 'sine', f: 1100, t0: 0.14, dur: 0.45, vol: 0.08 });
+        burst({ f: 900, f1: 3800, t0: 0.02, dur: 0.35, vol: 0.06, q: 0.6 });
+        return;
+      }
+      if (kind === 'win') {
+        const C5 = 523.25, E5 = 659.25, G5 = 783.99, C6 = 1046.5;
+        tone({ type: 'triangle', f: C5, dur: 0.5, vol: 0.13 });
+        tone({ type: 'triangle', f: E5, t0: 0.11, dur: 0.55, vol: 0.13 });
+        tone({ type: 'sine', f: G5, t0: 0.22, dur: 0.8, vol: 0.12 });
+        tone({ type: 'sine', f: C6, t0: 0.38, dur: 1.1, vol: 0.14 });
+        tone({ type: 'sine', f: G5 * 2, t0: 0.62, dur: 0.5, vol: 0.05, detune: 6 });
+        burst({ kind: 'highpass', f: 6000, t0: 0.38, dur: 0.5, vol: 0.035 });
+        return;
+      }
+      if (kind === 'boom') {
+        tone({ type: 'sine', f: 55, glide: 38, dur: 0.5, vol: 0.30 });
+        tone({ type: 'sawtooth', f: 130, glide: 70, dur: 0.32, vol: 0.16 });
+        burst({ kind: 'lowpass', f: 600, f1: 120, t0: 0, dur: 0.22, vol: 0.16, q: 0.5 });
+        return;
+      }
+      if (kind === 'pickup') {
+        tone({ type: 'square', f: 740, dur: 0.09, vol: 0.06 });
+        tone({ type: 'square', f: 1100, t0: 0.07, dur: 0.12, vol: 0.06 });
+        tone({ type: 'sine', f: 1480, t0: 0.14, dur: 0.18, vol: 0.05 });
+        return;
+      }
+      if (kind === 'catch') {
+        tone({ type: 'sawtooth', f: 240, glide: 85, dur: 0.4, vol: 0.18 });
+        tone({ type: 'square', f: 170, glide: 55, t0: 0.03, dur: 0.42, vol: 0.12 });
+        burst({ f: 700, f1: 220, t0: 0, dur: 0.18, vol: 0.14, q: 0.9 });
+        return;
+      }
+      if (kind === 'jump') {
+        tone({ type: 'sine', f: 260, glide: 560, dur: 0.22, vol: 0.08 });
+        burst({ f: 500, f1: 2400, t0: 0, dur: 0.16, vol: 0.05, q: 0.7 });
+        return;
+      }
+      if (kind === 'boost') {
+        tone({ type: 'sawtooth', f: 85, glide: 240, dur: 0.6, vol: 0.16 });
+        tone({ type: 'square', f: 170, glide: 480, t0: 0.05, dur: 0.6, vol: 0.09 });
+        burst({ f: 350, f1: 2000, t0: 0.02, dur: 0.5, vol: 0.07, q: 0.8 });
+        return;
+      }
+      if (kind === 'electric') {
+        for (let i = 0; i < 4; i++) burst({ f: 2600 + Math.random() * 2400, t0: i * 0.05, dur: 0.07, vol: 0.09, q: 8 });
+        tone({ type: 'square', f: 1200, dur: 0.1, vol: 0.05 });
+        return;
+      }
+      if (kind === 'impact') {
+        // Dull knock, pitches with impact speed.
+        const v = 0.55 + intensity * 0.45;
+        tone({ type: 'triangle', f: 200 + intensity * 120, glide: 120, dur: 0.16, vol: 0.16 * v });
+        tone({ type: 'sine', f: 120, glide: 70, dur: 0.18, vol: 0.10 * v });
+        burst({ kind: 'lowpass', f: 900, f1: 300, t0: 0, dur: 0.09, vol: 0.09 * v, q: 0.6 });
+        if (intensity > 0.5) burst({ f: 2400, t0: 0, dur: 0.06, vol: 0.05, q: 3 });
       }
     }
 
-    // -- CHASER ENEMY: pulsing proximity drone ------------------------------
+    // -- CHASER ENEMY: layered proximity drone ---------------------------------
     let chaser = null;
-    let lastImpactSound = 0; // cooldown so hard-wall hits don't rattle
     function startChaserSound() {
       const ctx = ensureAudio(); if (!ctx || !audio || chaser) return;
-      const osc = ctx.createOscillator();
-      osc.type = 'triangle'; osc.frequency.value = 62;
-      const oscGain = ctx.createGain(); oscGain.gain.value = 0;
-      const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 3;
-      const lfoGain = ctx.createGain(); lfoGain.gain.value = 0;
-      lfo.connect(lfoGain); lfoGain.connect(oscGain.gain);
-      osc.connect(oscGain); oscGain.connect(audio.master);
-      osc.start(); lfo.start();
-      chaser = { oscGain, lfo, lfoGain };
+      const t = ctx.currentTime;
+      const bus = ctx.createGain(); bus.gain.value = 0;
+      bus.connect(audio.master);
+
+      const flt = ctx.createBiquadFilter();
+      flt.type = 'lowpass'; flt.frequency.value = 160; flt.Q.value = 5;
+
+      const o1 = ctx.createOscillator(); o1.type = 'triangle'; o1.frequency.value = 54;
+      const o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.value = 57.6;
+      const o3 = ctx.createOscillator(); o3.type = 'sawtooth'; o3.frequency.value = 108;
+      for (const o of [o1, o2, o3]) { o.connect(flt); o.start(t); }
+
+      const nsrc = ctx.createBufferSource();
+      nsrc.buffer = audio.noiseBuf; nsrc.loop = true;
+      const nf = ctx.createBiquadFilter();
+      nf.type = 'lowpass'; nf.frequency.value = 900; nf.Q.value = 3;
+      const ng = ctx.createGain(); ng.gain.value = 0;
+      nsrc.connect(nf); nf.connect(ng); ng.connect(flt); nsrc.start(t);
+
+      const ampLfo = ctx.createOscillator(); ampLfo.type = 'sine'; ampLfo.frequency.value = 5.5;
+      const ampLfoG = ctx.createGain(); ampLfoG.gain.value = 0;
+      ampLfo.connect(ampLfoG); ampLfoG.connect(bus.gain); ampLfo.start(t);
+
+      const pitLfo = ctx.createOscillator(); pitLfo.type = 'sine'; pitLfo.frequency.value = 0.2;
+      const pitLfoG = ctx.createGain(); pitLfoG.gain.value = 0;
+      pitLfo.connect(pitLfoG); pitLfoG.connect(flt.frequency); pitLfo.start(t);
+
+      flt.connect(bus);
+      chaser = { bus, flt, o1, o2, o3, nsrc, ng, ampLfo, ampLfoG, pitLfo, pitLfoG };
     }
     function updateChaserSound(prox) {
       if (!chaser) return;
+      const ctx = audio.ctx;
       if (!isFinite(prox)) prox = 0;
       prox = Math.max(0, Math.min(1, prox));
-      const vol = prox > 0 ? 0.06 + prox * prox * 0.5 : 0;
-      chaser.oscGain.gain.value = vol;
-      chaser.lfo.frequency.value = 1.5 + prox * 8;
-      chaser.lfoGain.gain.value = prox > 0 ? vol * 0.8 : 0;
+      const vol = prox > 0 ? 0.06 + prox * prox * 0.34 : 0;
+      chaser.bus.gain.setTargetAtTime(vol, ctx.currentTime, 0.12);
+      chaser.flt.frequency.setTargetAtTime(140 + prox * prox * 950, ctx.currentTime, 0.18);
+      chaser.ampLfoG.gain.setTargetAtTime(prox > 0 ? vol * 0.65 : 0, ctx.currentTime, 0.15);
+      chaser.pitLfoG.gain.setTargetAtTime(prox > 0 ? 4 + prox * prox * 7 : 0, ctx.currentTime, 0.25);
+      chaser.ng.gain.setTargetAtTime(prox > 0 ? prox * prox * 0.06 : 0, ctx.currentTime, 0.2);
     }
     function stopChaserSound() {
-      if (chaser) {
-        chaser.oscGain.gain.value = 0;
-        chaser.lfoGain.gain.value = 0;
-      }
+      if (!chaser) return;
+      const ctx = audio.ctx, t = ctx.currentTime;
+      chaser.bus.gain.setTargetAtTime(0, t, 0.1);
+      const parts = [chaser.o1, chaser.o2, chaser.o3, chaser.ampLfo, chaser.pitLfo, chaser.nsrc];
+      for (const o of parts) { try { o.stop(t + 0.9); } catch (e) {} }
+      chaser = null;
     }
 
     // Settle a cube into its dormant home state: small, dim, still in its
@@ -1922,7 +2453,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
         // dims for a moment (right then is your chance to slip past), then it
         // gives up and tromps back to its home. Once back it goes dormant (small
         // and dim in its alcove) and only springs awake again if you come near.
-        const CHASE_BUDGET = 7.0;  // seconds hunting before it tires
+        const CHASE_BUDGET = 20.0; // seconds hunting before it tires
         const REST_TIME = 2.0;     // how long it stops before heading home
         if (e.rest) {
           e.restT -= dt;
@@ -1954,6 +2485,16 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
           }
           continue;
         } else {
+          // If the player escapes beyond sight range the cube loses the scent,
+          // stands down and tromps home — a wake can pressure you but never lock
+          // you out of finishing the maze.
+          if (e.chaseT > 1.0 && dToBall > 8.0 * cell) {
+            e.rest = true;
+            e.restT = REST_TIME;
+            e.chaseT = 0;
+            e.roll = 0;
+            continue;
+          }
           // Only burn the budget while the cube is actually bearing down.
           if (e.flipT > 0 || e.waitT > 0 || dToBall < 4.0) e.chaseT += dt;
           if (e.chaseT >= CHASE_BUDGET) {
@@ -1977,9 +2518,11 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
           stepEnemyChase(e, grid, cell, centerCol, dt, true, pRow, pCol);
         }
 
-        // Caught the player?
+        // Caught the player? Never inside the goal pocket — a chaser can pressure
+        // the finish line but can't deny the 1s hold, so the level always ends.
         const dNow = Math.hypot(e.x - ball.position.x, e.z - ball.position.z);
-        if (dNow < r) {
+        const atGoal = Math.hypot(ball.position.x - levelData.goalPos.x, ball.position.z - levelData.goalPos.z) < 1.0;
+        if (dNow < r && !atGoal) {
           triggerParticles('death', e.mesh.position);
           sfx('catch');
           showOverlay('😱 The cube caught you!', 'Roll away before it strikes!', 1.5);
@@ -1990,10 +2533,11 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
     }
 
     // IKU-style chase: the cube moves one cell at a time, tumbling a full 90°,
-    // pausing a beat, then tumbling again. This keeps it perfectly grid-aligned
-    // and flips about a single horizontal world axis per step (no drift).
+    // pausing a beat, then tumbling again. Keep the cell-to-cell pace BELOW the
+    // ball's comfortable cruise so a rolling player can always pull away — the
+    // threat is the lunge and the catch-if-you-stop, not an unescapable pursuit.
     const EN_FLIP = 0.40;   // seconds for one 90° tumble between cells
-    const EN_PAUSE = 0.49;  // seconds paused on a cell before the next tumble
+    const EN_PAUSE = 0.30;  // seconds paused on a cell before the next tumble
 
     // Advance the cube through its tumble / pause state machine.
     //  onGrid: whether the player is on this island (else the cube heads home).
@@ -2009,9 +2553,12 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       const cr = Math.round(e.z / cell + centerCol);                                  // enemy row
       const cc = Math.round((e.x - levelData.enemyACenterX) / cell + centerCol);      // enemy col
 
-      // Pick the cell we want to end up on THIS step. The cube may never enter
-      // a protected (route) cell, so chases route around the solution corridor.
-      const noGo = levelData.enemyNoGo;
+      // Pick the cell we want to end up on THIS step. While the player is on this
+      // island the cube gives genuine chase — it may walk the solution route and
+      // everything else, only the critical cells (spawn / switch / portals / goal)
+      // stay off-limits. When the player is elsewhere the cube heads home and then
+      // respects the full route ban so it never prowls the player's corridor.
+      const noGo = onGrid ? (levelData.enemyProtect || levelData.enemyNoGo) : levelData.enemyNoGo;
       const offLimits = (r, c) => noGo && noGo.has(r + ',' + c);
       let ntr, ntc;
       if (onGrid) {
@@ -2135,22 +2682,81 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       const az = CONFIG.gravity * Math.sin(tiltX);
       velocity.x += ax * dt;
       velocity.z += az * dt;
-      velocity.multiplyScalar(Math.pow(CONFIG.friction, dt * 60));
+      // Ice patches wash out the friction — the ball slides while over one.
+      let onIce = false;
+      if (ball.position.y <= CONFIG.ballRadius + 0.01) {
+        for (const t of levelData.iceTiles) {
+          const idx = ball.position.x - t.x, idz = ball.position.z - t.z;
+          if (idx*idx + idz*idz < (0.28 + CONFIG.ballRadius) * (0.28 + CONFIG.ballRadius)) { onIce = true; break; }
+        }
+      }
+      const frictionNow = onIce ? 0.9995 : CONFIG.friction;
+      velocity.multiplyScalar(Math.pow(frictionNow, dt * 60));
 
       for (let j of levelData.jumpPads) {
         const dx = ball.position.x - j.x;
         const dz = ball.position.z - j.z;
         if (dx*dx + dz*dz < (0.35 + CONFIG.ballRadius) * (0.35 + CONFIG.ballRadius)) {
-          if (velocity.y < 1) {
-            velocity.y = CONFIG.jumpBoost;
-            triggerParticles('jump', ball.position);
-            sfx('jump');
+          if (ball.position.y <= CONFIG.ballRadius + 0.02 && velocity.y <= 0.5) {
+            const tPad = performance.now();
+            if (tPad - (j.last || 0) > 650) {
+              j.last = tPad;
+              velocity.y = CONFIG.jumpBoost;
+              // A forward assist so a slow approach still clears the jump-wall:
+              // the pad doubles your roll speed at launch (capped so it can never
+              // turn into a rocket), which is what makes the wall a fair, deliberate
+              // hop rather than a pixel-perfect one.
+              const sp = Math.hypot(velocity.x, velocity.z);
+              if (sp > 0.1) { const k = Math.min(6.5 / sp, 1.9); velocity.x *= k; velocity.z *= k; }
+              triggerParticles('jump', ball.position);
+              sfx('jump');
+            }
           }
+        }
+      }
+
+      // Boost strips fling the ball forward along its heading (capped + throttled
+      // so a ball skimming a strip gets one kick, not a per-frame ramp-up).
+      {
+        const tNow = performance.now();
+        for (const t of levelData.boostTiles) {
+          const bdx = ball.position.x - t.x, bdz = ball.position.z - t.z;
+          if (bdx*bdx + bdz*bdz < (0.28 + CONFIG.ballRadius) * (0.28 + CONFIG.ballRadius)) {
+            const sp = Math.hypot(velocity.x, velocity.z);
+            if (sp > 0.05 && sp < 5.5 && tNow - (t.last || 0) > 250) {
+              t.last = tNow;
+              const push = Math.pow(2.2, dt);
+              const ns = Math.min(sp * push, 5.5);
+              velocity.x *= ns / sp; velocity.z *= ns / sp;
+              triggerParticles('switch', ball.position, 0x22ff88);
+              sfx('pickup');
+            }
+          }
+        }
+      }
+
+      // Green-boost surge: accelerates along your current heading up to a hard
+      // cap, with a green trail so the Wipeout feel reads visually.
+      if (greenBoost > 0) {
+        greenBoost -= dt;
+        const sp = Math.hypot(velocity.x, velocity.z);
+        if (sp > 0.05) {
+          const hx = velocity.x / sp, hz = velocity.z / sp;
+          const ns = Math.min(sp + CONFIG.greenBoostAccel * dt, CONFIG.greenBoostCap);
+          velocity.x = hx * ns; velocity.z = hz * ns;
+          if (frameCount % 3 === 0) triggerParticles('boost', ball.position);
         }
       }
 
       ball.position.x += velocity.x * dt;
       ball.position.z += velocity.z * dt;
+
+      // Simple vertical gravity for jump-pad hops (only while airborne, so the
+      // grounded roll is never disturbed).
+      if (ball.position.y > CONFIG.ballRadius) {
+        velocity.y -= CONFIG.jumpGravity * dt;
+        if (velocity.y < -12) velocity.y = -12;
+      }
       ball.position.y += velocity.y * dt;
 
       const r = CONFIG.ballRadius;
@@ -2182,6 +2788,11 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       for (let i = levelData.walls.length - 1; i >= 0; i--) {
         const wall = levelData.walls[i];
         const wPos = wall.position;
+        // Jump-pad launch lets the ball hop a low electric rail — and a jump-wall is
+        // a rail you MUST hop, so it shares the same airborne pass rule: while
+        // the ball is flying above the wall top it simply passes through.
+        const airborneOver = ball.position.y - r > CONFIG.wallHeight;
+        if (airborneOver && (wall.userData.isElectric || wall.userData.isJumpable)) continue;
         const halfCell = CONFIG.cellSize/2;
         const dx = ball.position.x - wPos.x;
         const dz = ball.position.z - wPos.z;
@@ -2232,7 +2843,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
               return;
             }
             else if (wall.userData.isBarrier) {
-              triggerParticles('switch', wPos, 0x2244ff);
+              triggerParticles('switch', wPos, wall.userData.barrierColor === 'green' ? 0x22ff44 : 0x2244ff);
             }
           }
         }
@@ -2245,9 +2856,17 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
         if (dx*dx + dz*dz < (0.32 + r) * (0.32 + r)) {
           if (ballColor !== dot.color) {
             ballColor = dot.color;
-            ball.material.color.set(dot.color === 'blue' ? 0x2244ff : 0xccccdd);
-            triggerParticles('switch', ball.position, dot.color === 'blue' ? 0x2244ff : 0x888888);
+            const dotHex = dot.color === 'blue' ? 0x2244ff : (dot.color === 'green' ? 0x22ff44 : 0xccccdd);
+            ball.material.color.set(dotHex);
+            triggerParticles('switch', ball.position, dotHex);
             sfx('pickup');
+            // Green is the real Wipeout-style speed burst: a straight-line surge
+            // on top of whatever heading you're on, handy at jump pads, after a
+            // portal, or to refuse to brake on a boost strip.
+            if (dot.color === 'green') {
+              greenBoost = CONFIG.greenBoostTime;
+              sfx('boost');
+            }
           }
         }
       }
@@ -2334,11 +2953,21 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       const ballWorld = ball.getWorldPosition(new THREE.Vector3());
       const h = CONFIG.cameraHeight;
       const fz = CONFIG.cameraFollowZ;
-      const cameraTarget = new THREE.Vector3(
-        ballWorld.x,
-        ballWorld.y + h,
-        ballWorld.z + fz
-      );
+      let cameraTarget;
+      if (devMode && !titleGroup.visible) {
+        const sn = Math.sin(camYaw), cs = Math.cos(camYaw);
+        cameraTarget = new THREE.Vector3(
+          ballWorld.x + sn * fz * camDist,
+          ballWorld.y + h * camDist + camElev,
+          ballWorld.z + cs * fz * camDist
+        );
+      } else {
+        cameraTarget = new THREE.Vector3(
+          ballWorld.x,
+          ballWorld.y + h,
+          ballWorld.z + fz
+        );
+      }
       camera.position.lerp(cameraTarget, 0.1);
       // While the title is up, frame the ball + title together in the vertical center
       const focusY = titleGroup.visible
@@ -2411,6 +3040,25 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
         minimapCtx.fill();
       }
 
+      minimapCtx.fillStyle = "#66aaff";
+      for (const jp of levelData.jumpPads) {
+        minimapCtx.beginPath();
+        minimapCtx.arc(jp.x * scale + (w/2), jp.z * scale + (h/2), 2, 0, 2 * Math.PI);
+        minimapCtx.fill();
+      }
+      minimapCtx.fillStyle = "#44ff88";
+      for (const bt of levelData.boostTiles) {
+        minimapCtx.beginPath();
+        minimapCtx.arc(bt.x * scale + (w/2), bt.z * scale + (h/2), 2, 0, 2 * Math.PI);
+        minimapCtx.fill();
+      }
+      minimapCtx.fillStyle = "#88ddee";
+      for (const it of levelData.iceTiles) {
+        minimapCtx.beginPath();
+        minimapCtx.arc(it.x * scale + (w/2), it.z * scale + (h/2), 2, 0, 2 * Math.PI);
+        minimapCtx.fill();
+      }
+
       const gx = levelData.goalPos.x * scale + (w/2);
       const gy = levelData.goalPos.z * scale + (h/2);
       minimapCtx.fillStyle = "yellow";
@@ -2427,7 +3075,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
 
       const bx = ball.position.x * scale + (w/2);
       const by = ball.position.z * scale + (h/2);
-      minimapCtx.fillStyle = ballColor === 'blue' ? "#2244ff" : "purple";
+      minimapCtx.fillStyle = ballColor === 'blue' ? "#2244ff" : (ballColor === 'green' ? "#22ff44" : "purple");
       minimapCtx.beginPath();
       minimapCtx.arc(bx, by, 4, 0, 2 * Math.PI);
       minimapCtx.fill();
@@ -2531,7 +3179,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       });
 
       btnStart.addEventListener('click', () => {
-        if (Object.keys(connections).length === 0) return;
+        if (gameActive) return;
         ensureAudio();
         gameStarted = true;
         gameActive = true;
@@ -2590,6 +3238,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
           if (titleClickCount >= 11) {
             titleClickCount = 0;
             hostLevels.style.display = hostLevels.style.display === 'grid' ? 'none' : 'grid';
+            setDevMode(hostLevels.style.display === 'grid');
           }
         });
       }
@@ -2602,9 +3251,9 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       }
 
       function updateClientCount() {
-        const count = Object.keys(connections).length;
-        clientCountEl.textContent = `👥 Connected: ${count}`;
-        btnStart.disabled = (count === 0);
+        const players = Object.keys(connections).length + 1;
+        clientCountEl.textContent = `👥 Players: ${players}`;
+        btnStart.disabled = gameActive;
       }
 
       document.addEventListener('keydown', (e) => {
@@ -2803,6 +3452,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
             if (data.ballColor) {
               ballColor = data.ballColor;
               if (ballColor === 'blue') ball.material.color.set(0x2244ff);
+              else if (ballColor === 'green') ball.material.color.set(0x22ff44);
               else ball.material.color.set(0xccccdd);
             }
 

@@ -1255,7 +1255,9 @@ function hostStart(){
 $('bStart').onclick=hostStart;
 
 function joinGame(code){
+  if(S.started||S.room)return;
   if(code.length<4)return setStatus('enter the 4-letter code');
+  if(S.peer){try{S.peer.destroy();}catch(_){}S.peer=null;}
   S.room=code;S.isHost=false;
   S.peer=new Peer(undefined,{debug:0});
   S.peer.on('open',id=>{
@@ -1327,7 +1329,10 @@ function joinGame(code){
       }else if(d.t==='win'){triggerWin();}});
     conn.on('close',()=>{alert('host left');location.reload();});
     conn.on('open',()=>setStatus('joined, syncing…'));});
-  S.peer.on('error',e=>setStatus('error: '+e.type));}
+  S.peer.on('error',e=>{
+    setStatus('error: '+e.type);
+    S.hostConn=null;S.room='';S.myId='';S.isHost=false;
+    if(S.peer){try{S.peer.destroy();}catch(_){}}S.peer=null;});}
 $('bJoin').onclick=()=>joinGame($('code').value.trim().toUpperCase());
 
 /* deep link: ?host=true arms HOST MODE (pick your own game id or generate a room

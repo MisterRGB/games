@@ -9,25 +9,28 @@
   html,body{margin:0;height:100%;overflow:hidden;background:#06070b;
     font-family:'Courier New',monospace;color:#cfd3da;user-select:none}
   canvas{display:block;touch-action:none}
-  #lobby{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-    background:rgba(5,6,10,.92);border:1px solid #2a2f3a;padding:28px 34px;
-    text-align:center;min-width:320px;z-index:5;max-height:92vh;overflow-y:auto}
-  #lobby h1{margin:0 0 4px;letter-spacing:6px;font-size:22px;color:#ffe9c4}
-  #lobby p{font-size:11px;color:#7a8291;margin:6px 0 14px;line-height:1.6}
+  #lobby{position:absolute;top:62%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(5,6,10,.85);border:1px solid #2a2f3a;padding:16px 24px;
+    text-align:center;width:560px;max-width:94vw;box-sizing:border-box;z-index:5;
+    max-height:80vh;overflow-y:auto}
+  #lobby p{font-size:10px;color:#7a8291;margin:3px 0 10px;line-height:1.5}
   input,button{background:#0b0d12;border:1px solid #333a48;color:#cfd3da;
     padding:9px 12px;font-family:inherit;font-size:14px;margin:3px;cursor:pointer}
   button:hover{border-color:#8a93a6;color:#fff}
+  #joinBox{display:flex;flex-wrap:wrap;justify-content:center;width:100%;box-sizing:border-box}
+  #joinBox input{flex:1 1 40%;min-width:150px}
+  #joinBox button{flex:0 1 auto}
   #bHost,#genCode{display:none}
   #lobby.host #bHost,#lobby.host #genCode{display:inline-block}
   #genCode{background:#2a2f3a;color:#caa75f}
-  #hostPanel{margin-top:14px;border:1px solid #2a2f3a;padding:14px;min-width:280px}
+  #hostPanel{margin-top:12px;border:1px solid #2a2f3a;padding:10px;min-width:0;width:100%;box-sizing:border-box}
   #hpl{font-size:12px;color:#cfd3da;letter-spacing:3px}
-  #hostCode{font-size:56px;letter-spacing:12px;color:#fff;margin:10px 0 4px;
+  #hostCode{font-size:44px;letter-spacing:10px;color:#fff;margin:8px 0 4px;
     font-weight:bold;text-shadow:0 0 18px rgba(255,255,255,.35)}
   #hostCount{font-size:11px;color:#8a93a6;margin-bottom:8px}
   #status{font-size:11px;color:#7a8291;margin-top:10px;min-height:14px}
-  #guide{margin-top:16px;border:1px solid #2a2f3a;padding:12px 14px;text-align:left;
-    font-size:11px;color:#8a93a6;line-height:1.7;max-width:380px}
+  #guide{width:100%;box-sizing:border-box;margin-top:12px;border:1px solid #2a2f3a;padding:10px 12px;text-align:left;
+    font-size:10px;color:#8a93a6;line-height:1.6}
   #guide b{color:#cfd3da;letter-spacing:2px;font-size:10px}
   #guide div{margin-top:8px}
   #hud{position:absolute;top:12px;left:16px;right:16px;display:flex;
@@ -65,10 +68,7 @@
 </head>
 <body>
 <div id="lobby">
-  <h1>ILLUMINATE</h1>
-  <p>25 depths · the dark is absolute · light is life<br>
-     water runs between the caves · bridges are the only way<br>
-     guardians guard the keys · light holds them still</p>
+
   <div id="joinBox">
     <input id="pname" placeholder="YOUR TAG" maxlength="10">
     <input id="code" placeholder="GAME ID / CODE" maxlength="8" style="text-transform:uppercase">
@@ -86,10 +86,11 @@
   <div id="guide">
     <div><b>CONTROLS</b> · WASD / arrows to move · mouse aims your light ·
       HOLD the mouse button to shine your torch · E uses artifacts &amp; gem
-      shards · touch: drag the left half to move,
-      touch the right half to aim</div>
-    <div><b>RULES</b> · find the KEYS to unlock the exit door, then get the
-      whole team through · GUARDIANS freeze in light, rush you in the dark ·
+      shards</div>
+    <div><b>RULES</b> · find the KEYS (someone must carry them) to unlock the
+      exit door, then shine a BEAM on the door and get the whole team through ·
+      the door answers with a blinding SONAR wave that lights the whole depth ·
+      GUARDIANS freeze in light, rush you in the dark ·
       SPIDERS burn in light · NESTS burst when lit with someone near ·
       water needs BRIDGES · shine light on fallen players to REVIVE them ·
       the ARTIFACT awakens the hidden ALTAR (use E there) ·
@@ -97,18 +98,21 @@
       COINS only shine under light · CHESTS hold big SCORE · a TREASURE KEY
       (glows only in light) opens locked chests with E · stand close together
       and your BEAMS FUSE into one wider lance</div>
+    <div><b>DESCENT</b> · from the 13th depth the caves FLOOD from below ·
+      the water always rises — hunt the keys, then reach the highest ground ·
+      if the whole team is claimed, the depth resets and you begin again</div>
   </div>
   <div id="status">enter a room code and <b>JOIN</b> · to host, type your own game id (or leave blank for a random one) and press <b>H</b> · deep link <b>?host=true&r=CODE</b></div>
 </div>
 <div id="hud" class="hidden">
-  <div>ROOM <b id="hRoom"></b> · <b id="hCount">0</b> ALIVE · DEPTH <b id="hLvl">1</b>/25</div>
+  <div>ROOM <b id="hRoom"></b> · <b id="hCount">0</b> ALIVE · DEPTH <b id="hLvl">1</b>/25 <span id="hFlood"></span></div>
   <div><b id="hKeys"></b> HP<span class="bar"><i id="hpBar"></i></span>
      <span id="hDoor">DOOR: DARK</span>
      <span id="hInv" style="margin-left:10px"></span>
      <span class="bar"><i id="syncBar"></i></span>SYNC
      <span id="hPts" style="margin-left:14px"></span></div>
 </div>
-<div id="hint" class="hidden">WASD move · mouse aims · HOLD mouse to shine your torch · a soft glow always surrounds you · bridges cross water · light freezes guardians · shine ON the door to open it · E uses artifacts &amp; shards · shine light on fallen players to revive them</div>
+<div id="hint" class="hidden">WASD move · mouse aims · HOLD mouse to shine your torch · a soft glow always surrounds you · bridges cross water · light freezes guardians · gather KEYS, shine ON the door, and ALL must enter to descend · E uses artifacts &amp; shards · shine light on fallen players to revive them · deepest depths FLOOD — climb toward the water's edge</div>
 <div id="deadMsg">YOU DIED — fallen, but your light is not out · teammates can revive you by shining on you</div>
 <div id="winMsg">ESCAPED INTO LIGHT<br><span style="font-size:12px;color:#8a93a6">all 25 depths cleared</span></div>
 <div id="logo" class="hidden">✦</div>
@@ -178,7 +182,8 @@ function levelCfg(L){
     nests:L<7?0:Math.round(lerp(1,3,(L-7)/18)),
     coins:Math.min(16,Math.round(lerp(6,14,t))),
     chests:L<3?0:Math.round(lerp(1,3,(L-3)/22)),
-    doorPct:0.25+0.35*t
+    doorPct:0.25+0.35*t,
+    flood:L>=13
   };
 }
 
@@ -187,6 +192,12 @@ function levelCfg(L){
 function generateCave(seed,L){
   const cfg=levelCfg(L);
   const R=mulberry32(seed);
+  /* flooding depths: the cave fills from the bottom up after a short grace,
+     then presses everyone toward high ground */
+  const flood=cfg.flood;
+  const ft=flood?(L-13)/12:0;
+  const floodDelay=flood?Math.round(lerp(30,20,ft)):0;
+  const floodDur=flood?Math.round(lerp(130,95,ft)):0;
   const hasAltar=L>=2&&R()<0.55;
   const hasGem=L>=4&&R()<0.4;
   const hasTrek=L>=3&&R()<0.65;
@@ -293,22 +304,34 @@ function generateCave(seed,L){
     return{x:cx*cs+cs/2,y:cy*cs+cs/2};}
   const spawn=nearestWalk(chambers[0].cx*cs,chambers[0].cy*cs);
   const minExitDist=Math.max(Math.min(cfg.worldW,cfg.worldH)*0.4,600);
-  /* pick a chamber far from spawn in grid space */
-  let ec=null,bestDist=-1;
+  /* pick the exit chamber: on flooding depths it must sit on the highest
+     reachable ground so there is always somewhere left to stand — on any
+     other depth just the chamber farthest from spawn */
+  let ec=null,bestScore=-1;
+  const mxd=Math.hypot(cfg.worldW,cfg.worldH);
   for(const c of chambers){
     const d=Math.hypot(c.cx*cs-spawn.x,c.cy*cs-spawn.y);
-    if(d>bestDist){bestDist=d;ec=c;}}
-  /* choose the walkable point within the exit chamber farthest from spawn */
+    if(flood){
+      const sc=(1-c.cy/gh)*1.6+d/mxd*0.7;
+      if(sc>bestScore){bestScore=sc;ec=c;}}
+    else if(d>bestScore){bestScore=d;ec=c;}}
+  /* choose the walkable spot in the exit chamber: high ground, still far */
   const eCx=Math.floor(ec.cx*cs/cs),eCy=Math.floor(ec.cy*cs/cs);
   const er=Math.max(6,Math.ceil(cfg.chambers===1?gw*0.30:gw*0.16));
-  let ex=spawn.x,ey=spawn.y,bd=0;
+  let ex=spawn.x,ey=spawn.y,bd=-1;
   for(let yy=eCy-er;yy<=eCy+er;yy++)for(let xx=eCx-er;xx<=eCx+er;xx++){
     if(xx<0||yy<0||xx>=gw||yy>=gh)continue;
     if(walk(xx,yy)){
       const wx=xx*cs+cs/2,wy=yy*cs+cs/2;
       const d=Math.hypot(wx-spawn.x,wy-spawn.y);
-      if(d>bd){bd=d;ex=wx;ey=wy;}}}
+      if(flood){
+        const sc=d*0.0022+(1-wy/cfg.worldH)*3;
+        if(sc>bd){bd=sc;ex=wx;ey=wy;}}
+      else if(d>bd){bd=d;ex=wx;ey=wy;}}}
   const exit={x:ex,y:ey};
+  /* on flooding depths the door keys can never sit too low: the team needs
+     to reach every one of them while it is still dry enough to grab */
+  const keyCeil=flood?cfg.worldH*(0.55-0.15*ft):cfg.worldH;
   /* keys: one per separate cavern when possible; spread wide in open spaces */
   const keys=[];
   /* key exclusion radius: keep keys far outside the spawn area */
@@ -352,6 +375,7 @@ function generateCave(seed,L){
     let bx=null,bsc=-Infinity;
     for(const c0 of farPockets){
       const wx=c0.x*cs+cs/2,wy=c0.y*cs+cs/2;
+      if(wy>keyCeil)continue;
       if(Math.hypot(wx-aw.x,wy-aw.y)<280)continue;
       if(Math.hypot(wx-spawn.x,wy-spawn.y)<minSpawnSep*0.7)continue;
       const sc=Math.hypot(wx-aw.x,wy-aw.y)-Math.hypot(wx-spawn.x,wy-spawn.y);
@@ -359,6 +383,7 @@ function generateCave(seed,L){
     if(!bx)for(let yy=1;yy<gh-1;yy++)for(let xx=1;xx<gw-1;xx++){
       if(!walk(xx,yy))continue;
       const wx=xx*cs+cs/2,wy=yy*cs+cs/2;
+      if(wy>keyCeil)continue;
       if(Math.hypot(wx-aw.x,wy-aw.y)<260)continue;
       if(Math.hypot(wx-spawn.x,wy-spawn.y)<minSpawnSep*0.6)continue;
       const sc=Math.hypot(wx-aw.x,wy-aw.y)-Math.hypot(wx-spawn.x,wy-spawn.y);
@@ -375,6 +400,7 @@ function generateCave(seed,L){
     let bx=null,bsc=-Infinity;
     for(const c0 of farPockets){
       const wx=c0.x*cs+cs/2,wy=c0.y*cs+cs/2;
+      if(wy>keyCeil)continue;
       if(Math.hypot(wx-spawn.x,wy-spawn.y)<minSpawnSep*0.8)continue;
       if(Math.hypot(wx-exit.x,wy-exit.y)<minExitSep)continue;
       if(altar&&Math.hypot(wx-altar.x,wy-altar.y)<gemSep)continue;
@@ -387,6 +413,7 @@ function generateCave(seed,L){
     if(!bx)for(let yy=1;yy<gh-1;yy++)for(let xx=1;xx<gw-1;xx++){
       if(!walk(xx,yy))continue;
       const wx=xx*cs+cs/2,wy=yy*cs+cs/2;
+      if(wy>keyCeil)continue;
       if(Math.hypot(wx-spawn.x,wy-spawn.y)<minSpawnSep*0.6)continue;
       if(Math.hypot(wx-exit.x,wy-exit.y)<minExitSep)continue;
       if(altar&&Math.hypot(wx-altar.x,wy-altar.y)<gemSep)continue;
@@ -405,6 +432,7 @@ function generateCave(seed,L){
     let bx=null,bsc=-Infinity;
     for(const c0 of farPockets){
       const wx=c0.x*cs+cs/2,wy=c0.y*cs+cs/2;
+      if(wy>keyCeil)continue;
       if(Math.hypot(wx-spawn.x,wy-spawn.y)<minSpawnSep)continue;
       let ok=true;
       for(const sp of specials)if(Math.hypot(wx-sp.x,wy-sp.y)<minKeySep){ok=false;break;}
@@ -414,6 +442,7 @@ function generateCave(seed,L){
     if(!bx)for(let yy=1;yy<gh-1;yy++)for(let xx=1;xx<gw-1;xx++){
       if(!walk(xx,yy))continue;
       const wx=xx*cs+cs/2,wy=yy*cs+cs/2;
+      if(wy>keyCeil)continue;
       if(Math.hypot(wx-spawn.x,wy-spawn.y)<minSpawnSep*0.6)continue;
       let ok=true;
       for(const sp of specials)if(Math.hypot(wx-sp.x,wy-sp.y)<minKeySep){ok=false;break;}
@@ -429,6 +458,7 @@ function generateCave(seed,L){
     let best=null,bsc=-Infinity;
     for(const c0 of farPockets){
       const wx=c0.x*cs+cs/2,wy=c0.y*cs+cs/2;
+      if(wy>keyCeil)continue;
       if(Math.hypot(wx-spawn.x,wy-spawn.y)<minSpawnSep*0.9)continue;
       let ok=true;
       for(const sp of specials)if(Math.hypot(wx-sp.x,wy-sp.y)<minKeySep){ok=false;break;}
@@ -445,6 +475,7 @@ function generateCave(seed,L){
       for(let yy=1;yy<gh-1;yy++)for(let xx=1;xx<gw-1;xx++){
         if(!walk(xx,yy))continue;
         const wx=xx*cs+cs/2,wy=yy*cs+cs/2;
+        if(wy>keyCeil)continue;
         if(Math.hypot(wx-spawn.x,wy-spawn.y)<220)continue;
         if(Math.hypot(wx-exit.x,wy-exit.y)<140)continue;
         let ok=true;
@@ -480,6 +511,7 @@ function generateCave(seed,L){
         if(xx<0||yy<0||xx>=gw||yy>=gh)continue;
         if(!walk(xx,yy))continue;
         const wx=xx*cs+cs/2,wy=yy*cs+cs/2;
+        if(wy>keyCeil)continue;
         const dS=Math.hypot(wx-spawn.x,wy-spawn.y);
         if(dS<minSpawnSep)continue;
         if(Math.hypot(wx-exit.x,wy-exit.y)<minExitSep)continue;
@@ -487,7 +519,7 @@ function generateCave(seed,L){
         for(const p of placed)if(Math.hypot(p.x-wx,p.y-wy)<minKeySep){ok=false;break;}
         for(const sp of specials)if(Math.hypot(wx-sp.x,wy-sp.y)<minKeySep){ok=false;break;}
         if(!ok)continue;
-        const dc=Math.hypot(wx-cx*cs,wy-cy*cs);
+        const dc=Math.hypot(wx-cx*cs,wy-cy*cs)+(flood?(1-wy/cfg.worldH)*6:0);
         if(dc<bkd){bkd=dc;best={x:wx,y:wy};}}
     }else{
       /* target cavern: pop a fresh cavern while available, else farthest */
@@ -507,6 +539,7 @@ function generateCave(seed,L){
         if(xx<0||yy<0||xx>=gw||yy>=gh)continue;
         if(!walk(xx,yy))continue;
         const wx=xx*cs+cs/2,wy=yy*cs+cs/2;
+        if(wy>keyCeil)continue;
         const dS=Math.hypot(wx-spawn.x,wy-spawn.y);
         const dE=Math.hypot(wx-exit.x,wy-exit.y);
         if(dS<minSpawnSep)continue;
@@ -518,7 +551,7 @@ function generateCave(seed,L){
           if(Math.hypot(wx-sp.x,wy-sp.y)<minKeySep){ok=false;break;}
         if(!ok)continue;
         const dC=Math.hypot(wx-ch.cx*cs,wy-ch.cy*cs);
-        const sc=dS*0.006-dC*0.003+dE*0.004;
+        const sc=dS*0.006-dC*0.003+dE*0.004+(flood?(1-wy/cfg.worldH)*2.5:0);
         if(sc>bestSc){bestSc=sc;best={x:wx,y:wy};}}}
     if(best){keys.push({x:best.x,y:best.y,taken:false});placed.push(best);}
     else{
@@ -526,17 +559,19 @@ function generateCave(seed,L){
          relaxation ladder so every key ALWAYS gets placed */
       let fb=null;
       const ladder=[
-        {mS:minSpawnSep,mE:minExitSep,mK:minKeySep},
-        {mS:minSpawnSep,mE:Math.max(180,minExitSep*0.7),mK:minKeySep},
-        {mS:minSpawnSep*0.5,mE:Math.max(140,minExitSep*0.5),mK:Math.max(cs*4,minKeySep*0.6)},
-        {mS:cs*3,mE:cs*3,mK:cs*4},
-        {mS:cs*2,mE:cs*2,mK:cs*4}];
+        {mS:minSpawnSep,mE:minExitSep,mK:minKeySep,fy:keyCeil},
+        {mS:minSpawnSep,mE:Math.max(180,minExitSep*0.7),mK:minKeySep,fy:keyCeil},
+        {mS:minSpawnSep*0.5,mE:Math.max(140,minExitSep*0.5),mK:Math.max(cs*4,minKeySep*0.6),fy:keyCeil*1.2},
+        {mS:minSpawnSep*0.4,mE:Math.max(120,minExitSep*0.4),mK:cs*4,fy:keyCeil*1.7},
+        {mS:cs*3,mE:cs*3,mK:cs*4,fy:cfg.worldH},
+        {mS:cs*2,mE:cs*2,mK:cs*4,fy:cfg.worldH}];
       for(const r of ladder){
         if(fb)break;
         let fsc=-Infinity;
         for(let yy=1;yy<gh-1;yy++)for(let xx=1;xx<gw-1;xx++){
           if(!walk(xx,yy))continue;
           const wx=xx*cs+cs/2,wy=yy*cs+cs/2;
+          if(wy>r.fy)continue;
           const dS=Math.hypot(wx-spawn.x,wy-spawn.y);
           const dE=Math.hypot(wx-exit.x,wy-exit.y);
           if(dS<r.mS||dE<r.mE)continue;
@@ -546,7 +581,7 @@ function generateCave(seed,L){
           for(const sp of specials)
             if(Math.hypot(wx-sp.x,wy-sp.y)<r.mK){ok=false;break;}
           if(!ok)continue;
-          const sc=dS*0.006+dE*0.004;
+          const sc=dS*0.006+dE*0.004+(flood?(1-wy/cfg.worldH)*3:0);
           if(sc>fsc){fsc=sc;fb={x:wx,y:wy};}}}
       if(fb){keys.push({x:fb.x,y:fb.y,taken:false});placed.push(fb);}}}
   const spikes=[];
@@ -628,7 +663,19 @@ function generateCave(seed,L){
         const an=rot+s/5*TAU;
         pts.push([rx+Math.cos(an)*rr*m[s],ry+Math.sin(an)*rr*m[s]]);}
       rocks.push({x:rx,y:ry,r:rr,rot,m,pts});}}
-  return{cfg,cs,gw,gh,g,spawn,exit,keys,spikes,guardians,nests,rocks,chambers,pockets,altar,art,gems,coins,chests,trek};
+  /* the waterlines of every standing pool: rows whose cells carry water with
+     no water above, as pixel runs. Beams die on these lines — the light that
+     reaches a pool stops at the surface and lights it there. */
+  const wtop=[];
+  for(let y=0;y<gh;y++){
+    let ss=-1;
+    for(let x=0;x<=gw;x++){
+      const top=x<gw&&g[y][x]===3&&!(y>0&&g[y-1][x]===3);
+      if(top&&ss<0)ss=x;
+      else if(!top&&ss>=0){
+        wtop.push({y:y*cs,runs:[[ss*cs,(x-1)*cs+cs]]});ss=-1;}}}
+  return{cfg,cs,gw,gh,g,spawn,exit,keys,spikes,guardians,nests,rocks,chambers,pockets,altar,art,gems,coins,chests,trek,wtop,
+    floodDelay,floodDur,floodMinY:flood?40:0};
 }
 
 /* ============ STATE ============ */
@@ -636,14 +683,212 @@ const S={isHost:false,peer:null,conns:new Map(),hostConn:null,
   myId:'',room:'',seed:0,level:1,cave:null,names:{},
   players:{},view:{},enemies:[],door:{open:false,k:0,need:1,keysLeft:0,keysN:0},
   cam:{x:0,y:0},mouse:{x:innerWidth/2,y:innerHeight/2},
-  keys:{},stick:null,started:false,shake:0,won:false,reveal:false,
+  keys:{},stick:null,started:false,shake:0,won:false,reveal:false,flood:null,
   usePress:false,pulse:null,flash:0,toast:null,mouseDown:false,
-  eyes:[],eyeT:0,fx:[],fxV:[]};
+  eyes:[],eyeT:0,fx:[],fxV:[],winPulse:null,winTint:0,doorN:0};
+
+/* prepare the flood for the fresh cave: dormant on dry depths, else it waits
+   out a short grace period before climbing from the abyss to the ceiling */
+function initFlood(){
+  const c=S.cave,f=S.flood=S.flood||{};
+  const minY=c.floodMinY||0;
+  f.active=!!c.cfg.flood;
+  f.y=c.cfg.worldH+30;
+  f.minY=minY;
+  f.speed=c.floodDur>0?(c.cfg.worldH+30-minY)/c.floodDur:0;
+  f.delay=c.floodDelay||0;
+  f.alerted=false;f.done=false;}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const fog=document.createElement('canvas'),fctx=fog.getContext('2d');
 function resize(){cv.width=fog.width=innerWidth;cv.height=fog.height=innerHeight;}
 addEventListener('resize',resize);resize();
+
+/* ============ TITLE SCREEN ============
+   before the game starts, the cave holds its breath. The word ILLUMINATE
+   waits in the dark above the lobby; a sweeping torch beam pours from beneath
+   the screen toward the cursor, and every letter the beam rakes kindles warm
+   gold — the same rule as the caves below: light reveals. Click to fling a
+   sonar pulse; the beam also ambles by itself when the mouse is idle. */
+const TITLE={src:{x:0,y:0},aim:{x:0,y:0},letters:[],dust:[],pulses:[],
+  sparks:[],lastMove:performance.now(),lastPulse:0,on:true,_lt:0,litTotal:0};
+function titleLayout(){
+  const W=cv.width,H=cv.height;
+  TITLE.src={x:W/2,y:H+42};
+  const fs=Math.max(30,Math.min(W*0.068,H*0.115));
+  ctx.font='700 '+fs+'px Courier New';
+  const word='ILLUMINATE',spacing=Math.round(fs*0.06);
+  const widths=[];for(const ch of word)widths.push(ctx.measureText(ch).width);
+  const total=widths.reduce((a,b)=>a+b,0)+spacing*(word.length-1);
+  let x=(W-total)/2;const y0=H*0.15;
+  TITLE.letters=[];
+  for(let i=0;i<word.length;i++){
+    TITLE.letters.push({ch:word[i],cx:x+widths[i]/2,cy:y0+fs*0.72,
+      w:widths[i],h:fs,lit:0,heat:0});x+=widths[i]+spacing;}
+  const dn=Math.round(W*H/16000);
+  TITLE.dust=[];
+  for(let i=0;i<dn;i++)TITLE.dust.push({x:Math.random()*W,y:Math.random()*H,
+    z:0.3+Math.random()*0.7,vx:Math.random()*6-3,vy:-6-Math.random()*14,
+    tw:Math.random()*TAU,s:0.6+Math.random()*1.1});
+}
+titleLayout();
+function titleSpark(x,y){
+  const n=2+Math.floor(Math.random()*3);
+  for(let i=0;i<n;i++)TITLE.sparks.push({x,y,
+    vx:Math.random()*120-60,vy:Math.random()*120-60,life:0.5+Math.random()*0.4});}
+function titleUpdate(dt,t){
+  for(const d of TITLE.dust){
+    d.x+=d.vx*dt;d.y+=d.vy*dt;d.tw+=dt*2;
+    if(d.y<-8){d.y=cv.height+8;d.x=Math.random()*cv.width;}}
+  for(const sp of TITLE.sparks){
+    sp.x+=sp.vx*dt;sp.y+=sp.vy*dt;sp.vx*=0.9;sp.vy*=0.9;sp.life-=dt;}
+  TITLE.sparks=TITLE.sparks.filter(s=>s.life>0);
+  TITLE.pulses=TITLE.pulses.filter(pu=>t-pu.t<=1100);
+  const idle=t-TITLE.lastMove;
+  if(idle>2600){
+    const r=Math.min(cv.width,cv.height)*0.42;
+    TITLE.aim={x:cv.width/2+Math.cos(t*0.00025)*r,
+      y:cv.height*0.3+Math.sin(t*0.00045)*r*0.55};
+  }else TITLE.aim={x:S.mouse.x,y:S.mouse.y};
+  const sx=TITLE.src.x,sy=TITLE.src.y,tx=TITLE.aim.x,ty=TITLE.aim.y;
+  let total=0;
+  for(const L of TITLE.letters){
+    const sd=distToSeg(L.cx,L.cy,sx,sy,tx,ty);
+    const along=Math.hypot(tx-L.cx,ty-L.cy);
+    const e=Math.max(Math.exp(-(sd/120)*(sd/120)),
+      Math.exp(-(along/150)*(along/150))*1.25)*0.9;
+    const prev=L.lit;
+    L.lit=Math.min(1.25,L.lit+(e*1.7-L.lit*0.6)*dt);
+    if(L.lit>0.9&&prev<=0.9)titleSpark(L.cx,L.cy);
+    L.heat=Math.min(1.2,L.heat+e*dt*2-L.heat*0.35*dt);
+    total+=L.lit;}
+  TITLE.litTotal=total/TITLE.letters.length;
+  if(S.mouseDown&&t-TITLE.lastPulse>220){
+    TITLE.lastPulse=t;
+    TITLE.pulses.push({x:S.mouse.x,y:S.mouse.y,t,seeded:Math.random()*100});}}
+function titleBeam(tx,ty,alpha){
+  const sx=TITLE.src.x,sy=TITLE.src.y;
+  const dx=tx-sx,dy=ty-sy,len=Math.hypot(dx,dy)||1;
+  const px=-dy/len,py=dx/len;
+  ctx.lineCap='round';
+  /* wide soft halo shell */
+  const hal=ctx.createLinearGradient(sx,sy,tx,ty);
+  hal.addColorStop(0,'rgba(255,214,130,'+(0.05*alpha)+')');
+  hal.addColorStop(1,'rgba(255,214,130,'+(0.22*alpha)+')');
+  ctx.fillStyle=hal;
+  ctx.beginPath();
+  ctx.moveTo(sx+px*3,sy+py*3);
+  ctx.lineTo(tx+px*22,ty+py*22);
+  ctx.lineTo(tx-px*22,ty-py*22);
+  ctx.lineTo(sx-px*3,sy-py*3);
+  ctx.closePath();ctx.fill();
+  /* bright hot core */
+  const cor=ctx.createLinearGradient(sx,sy,tx,ty);
+  cor.addColorStop(0,'rgba(255,232,170,'+(0.5*alpha)+')');
+  cor.addColorStop(0.55,'rgba(255,214,130,'+(0.42*alpha)+')');
+  cor.addColorStop(1,'rgba(255,214,130,0)');
+  ctx.fillStyle=cor;
+  ctx.beginPath();
+  ctx.moveTo(sx+px*0.8,sy+py*0.8);
+  ctx.lineTo(tx+px*8,ty+py*8);
+  ctx.lineTo(tx-px*8,ty-py*8);
+  ctx.lineTo(sx-px*0.8,sy-py*0.8);
+  ctx.closePath();ctx.fill();
+  /* hot bloom coming off the tip */
+  const tip=ctx.createRadialGradient(tx,ty,0,tx,ty,34);
+  tip.addColorStop(0,'rgba(255,238,190,'+(0.5*alpha)+')');
+  tip.addColorStop(1,'rgba(255,214,130,0)');
+  ctx.fillStyle=tip;ctx.beginPath();ctx.arc(tx,ty,34,0,TAU);ctx.fill();}
+function titleDraw(t){
+  const W=cv.width,H=cv.height;
+  const bg=ctx.createRadialGradient(W/2,H*0.32,40,W/2,H*0.32,Math.max(W,H)*0.72);
+  bg.addColorStop(0,'#0a0d15');
+  bg.addColorStop(1,'#04050a');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  /* faint cavern teeth along the top, waiting for light */
+  ctx.strokeStyle='rgba(120,140,170,0.10)';ctx.lineWidth=1.4;
+  ctx.beginPath();
+  const tooth=H*0.055;
+  for(let x=0;x<=W;x+=26){
+    const ph=Math.sin(x*0.02+t*0.0004)*0.5+0.5;
+    ctx.moveTo(x,tooth*ph+14);
+    ctx.lineTo(x+13,tooth*(1-ph)*0.4+tooth*0.6+10);}
+  ctx.stroke();
+  const tx=TITLE.aim.x,ty=TITLE.aim.y;
+  ctx.globalCompositeOperation='lighter';
+  titleBeam(tx,ty,1);
+  for(const pu of TITLE.pulses){
+    const pe=(t-pu.t)/1100;
+    if(pe>=1)continue;
+    const pr=30+380*pe;
+    const pa=(1-pe)*(0.5+0.4*Math.sin(pu.seeded+t*0.02));
+    const ring=ctx.createRadialGradient(pu.x,pu.y,pr*0.82,pu.x,pu.y,pr);
+    ring.addColorStop(0,'rgba(255,214,130,0)');
+    ring.addColorStop(0.75,'rgba(255,200,110,'+(pa*0.7)+')');
+    ring.addColorStop(1,'rgba(255,190,110,0)');
+    ctx.fillStyle=ring;ctx.beginPath();ctx.arc(pu.x,pu.y,pr,0,TAU);ctx.fill();
+    ctx.strokeStyle='rgba(255,214,130,'+pa+')';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(pu.x,pu.y,pr,0,TAU);ctx.stroke();}
+  /* dusket floats: dim everywhere, they blaze as the beam passes through */
+  for(const d of TITLE.dust){
+    const sd=distToSeg(d.x,d.y,TITLE.src.x,TITLE.src.y,tx,ty);
+    const beamGlow=Math.exp(-(sd/90)*(sd/90));
+    const tipGlow=Math.exp(-(Math.hypot(tx-d.x,ty-d.y)/110)*(Math.hypot(tx-d.x,ty-d.y)/110))*0.8;
+    const a=0.05+0.35*Math.max(beamGlow,tipGlow)*(0.75+0.25*Math.sin(d.tw));
+    ctx.fillStyle='rgba(255,214,130,'+a+')';
+    ctx.beginPath();ctx.arc(d.x,d.y,d.s*d.z*1.4,0,TAU);ctx.fill();}
+  for(const sp of TITLE.sparks){
+    const a=clamp(sp.life/0.4,0,1);
+    ctx.globalAlpha=a;
+    ctx.fillStyle='rgba(255,226,150,0.9)';
+    ctx.beginPath();ctx.arc(sp.x,sp.y,1.4,0,TAU);ctx.fill();}
+  ctx.globalAlpha=1;
+  ctx.globalCompositeOperation='source-over';
+  /* the waiting word: cold steel by default, kindling letter by letter */
+  ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  for(const L of TITLE.letters){
+    const litz=clamp(L.lit,0,1),heat=clamp(L.heat,0,1);
+    const r=Math.round(lerp(48,lerp(150,255,litz),litz));
+    const g0=Math.round(lerp(56,lerp(168,214,litz),litz));
+    const b=Math.round(lerp(72,lerp(128,120,litz),litz));
+    const flick=0.92+0.08*Math.sin(t*0.01+L.cx);
+    ctx.font='700 '+L.h+'px Courier New';
+    ctx.shadowColor='rgba(255,198,100,'+(heat*0.9)+')';
+    ctx.shadowBlur=10+heat*26;
+    ctx.fillStyle='rgba('+r+','+g0+','+b+','+(0.28+litz*0.66)+')';
+    ctx.fillText(L.ch,L.cx,L.cy);
+    if(litz>0.82){
+      ctx.shadowBlur=0;
+      ctx.fillStyle='rgba(255,246,220,'+((litz-0.82)*4*flick)+')';
+      ctx.fillText(L.ch,L.cx,L.cy);}}
+  ctx.shadowBlur=0;
+  /* the word's lamp flares fully lit as the whole title ignites */
+  const bl=clamp(TITLE.litTotal,0,1);
+  if(bl>0.15){
+    ctx.globalCompositeOperation='lighter';
+    ctx.fillStyle='rgba(255,214,130,'+(bl*0.10)+')';
+    ctx.font='700 '+Math.round(TITLE.letters[0].h)+'px Courier New';
+    ctx.fillText('ILLUMINATE',cv.width/2,TITLE.letters[0].cy);
+    ctx.globalCompositeOperation='source-over';}
+  /* subtitles under the word */
+  ctx.font='11px Courier New';
+  ctx.fillStyle='rgba(207,211,218,'+(0.28+bl*0.5)+')';
+  ctx.fillText('25 DEPTHS · THE DARK IS ABSOLUTE · LIGHT IS LIFE',W/2,TITLE.letters[0].cy+30);
+  ctx.fillStyle='rgba(207,211,218,'+(0.16+bl*0.4)+')';
+  ctx.fillText('MOVE THE MOUSE TO SHINE THE BEAM',W/2,TITLE.letters[0].cy+50);}
+function titleLoop(){
+  TITLE._raf=requestAnimationFrame(titleLoop);
+  if(S.started||!TITLE.on){TITLE.on=false;if(TITLE._raf)cancelAnimationFrame(TITLE._raf);return;}
+  const t=performance.now(),dt=Math.min(0.05,(t-(TITLE._lt||t))/1000);
+  TITLE._lt=t;
+  titleUpdate(dt,t);
+  titleDraw(t);}
+addEventListener('mousemove',()=>TITLE.lastMove=performance.now());
+addEventListener('touchmove',()=>TITLE.lastMove=performance.now());
+addEventListener('mousedown',()=>{if(!S.started){TITLE.lastMove=performance.now();
+  TITLE.pulses.push({x:S.mouse.x,y:S.mouse.y,t:performance.now(),seeded:Math.random()*100});}});
+addEventListener('resize',()=>{if(!S.started)titleLayout();});
+titleLoop();
 
 /* ============ AUDIO ============ */
 let AC=null;
@@ -897,6 +1142,13 @@ function packEnemies(){return S.enemies.map(e=>
   [Math.round(e.x),Math.round(e.y),e.dead?4:e.state,
    e.kind==='spider'?1:(e.kind==='nest'?2:0)]);}
 function packKeys(){return S.cave.keys.map(k=>k.taken?1:0);}
+function packFlood(){const f=S.flood;
+  return f?{y:Math.round(f.y),a:f.active?1:0,r:(f.alerted||f.done)?1:0}:{y:99999,a:0,r:0};}
+function recvFlood(fd){
+  const was={active:!!(S.flood&&S.flood.active),rising:!!(S.flood&&S.flood.rising)};
+  S.flood=S.flood||{};
+  if(fd){S.flood.y=fd.y;S.flood.active=!!fd.a;S.flood.rising=!!fd.r;}
+  return was;}
 function unpack(arr){
   for(const[id,x,y,a,hp,dead,hurt,art,gem,rev,beam,trek,pts]of arr){
     const was=S.players[id];
@@ -957,7 +1209,7 @@ function hostGame(){
         S.players[conn.peer]=newPlayer(
           S.cave.spawn.x+(Math.random()-0.5)*60,S.cave.spawn.y+(Math.random()-0.5)*60);
         conn.send({t:'init',seed:S.seed,level:S.level,names:S.names,
-          p:packPlayers(),e:packEnemies(),k:packKeys(),door:S.door,g:S.cave.gems.map(gg=>gg.taken?1:0),pc:S.pCount||1,
+          p:packPlayers(),e:packEnemies(),k:packKeys(),door:S.door,g:S.cave.gems.map(gg=>gg.taken?1:0),pc:S.pCount||1,fd:packFlood(),
     bt:S.cave.altar?Math.round((S.cave.altar.beam||0)*10):0,
           co:S.cave.coins.map(x=>x.taken?1:0),ch:S.cave.chests.map(x=>x.open?1:0),
           tk:S.cave.trek?S.cave.trek.taken:0});}
@@ -986,7 +1238,7 @@ function hostStart(){
   S.seed=(Math.random()*4294967296)>>>0;
   S.pCount=Math.min(4,S.conns.size?S.conns.size+1:1);
   S.cave=generateCave(S.seed,S.level);
-  S.view={};
+  S.view={};S._resetT=0;initFlood();
   S.players[S.myId]=newPlayer(S.cave.spawn.x,S.cave.spawn.y);
   S.enemies=S.cave.guardians.map(g=>({...g,kind:'guard'})).concat(
     S.cave.nests.map(n=>({...n,kind:'nest',state:0,t:0,dead:false})));
@@ -994,7 +1246,7 @@ function hostStart(){
     S.players[conn.peer]=newPlayer(
       S.cave.spawn.x+(Math.random()-0.5)*60,S.cave.spawn.y+(Math.random()-0.5)*60);
     conn.send({t:'init',seed:S.seed,level:S.level,names:S.names,
-      p:packPlayers(),e:packEnemies(),k:packKeys(),door:S.door,g:S.cave.gems.map(gg=>gg.taken?1:0),pc:S.pCount||1,
+      p:packPlayers(),e:packEnemies(),k:packKeys(),door:S.door,g:S.cave.gems.map(gg=>gg.taken?1:0),pc:S.pCount||1,fd:packFlood(),
     bt:S.cave.altar?Math.round((S.cave.altar.beam||0)*10):0,
           co:S.cave.coins.map(x=>x.taken?1:0),ch:S.cave.chests.map(x=>x.open?1:0),
           tk:S.cave.trek?S.cave.trek.taken:0});});
@@ -1017,7 +1269,7 @@ function joinGame(code){
       if(d.t==='init'){
         S.seed=d.seed;S.level=d.level;S.door=d.door;S.names=d.names||{};
         S.pCount=Math.min(4,Math.max(1,d.pc||1));
-        S.cave=generateCave(S.seed,S.level);unpack(d.p);
+        S.cave=generateCave(S.seed,S.level);recvFlood(d.fd);unpack(d.p);
         if(d.g&&S.cave.gems)S.cave.gems.forEach((gg,i)=>gg.taken=!!d.g[i]);
         if(d.co&&S.cave.coins)S.cave.coins.forEach((x,i)=>{
           const was=x.taken;x.taken=!!d.co[i];
@@ -1030,6 +1282,8 @@ function joinGame(code){
         S.enemies=decEnemies(d.e);
         syncKeys(d.k);$('hLvl').textContent=S.level;startGame();
       }else if(d.t==='st'){
+        const fPrev=recvFlood(d.fd);
+        if(!fPrev.rising&&S.flood&&S.flood.rising)showToast('THE WATER RISES — FIND HIGHER GROUND');
         unpack(d.p);S.door=d.door;syncEnemies(d.e);syncKeys(d.k);
         if(S.cave.art)S.cave.art.taken=!!d.art;
         if(d.g&&S.cave.gems)S.cave.gems.forEach((gg,i)=>gg.taken=!!d.g[i]);
@@ -1051,7 +1305,7 @@ function joinGame(code){
         S.seed=d.seed;S.level=d.level;
         S.pCount=Math.min(4,Math.max(1,d.pc||1));
         S.cave=generateCave(S.seed,S.level);
-        S.view={};unpack(d.p);
+        S.view={};recvFlood(d.fd);unpack(d.p);
         if(d.g&&S.cave.gems)S.cave.gems.forEach((gg,i)=>gg.taken=!!d.g[i]);
         if(d.co&&S.cave.coins)S.cave.coins.forEach((x,i)=>{
           const was=x.taken;x.taken=!!d.co[i];
@@ -1064,7 +1318,13 @@ function joinGame(code){
         S.enemies=decEnemies(d.e);
         syncKeys(d.k);$('hLvl').textContent=S.level;snd.level();
         $('deadMsg').style.display='none';updateDots();S.pulse=null;
+        if(d.restart){S.flash=1;
+          showToast(d.fd&&d.fd.a?'THE WATER CLAIMED YOU — THIS DEPTH RESETS':'EVERY LIGHT WENT OUT — THIS DEPTH RESETS');}
         if(S.level%5===0){snd.milestone();S.flash=1;}
+      }else if(d.t==='wp'){
+        if(d.n>(S.doorN||0)){S.doorN=d.n;
+          S.winPulse={x:d.x,y:d.y,t:performance.now()};
+          snd.milestone();snd.triumph();}
       }else if(d.t==='win'){triggerWin();}});
     conn.on('close',()=>{alert('host left');location.reload();});
     conn.on('open',()=>setStatus('joined, syncing…'));});
@@ -1105,7 +1365,7 @@ function hurt(p,amt,ang,kb){
   p.hp-=amt;p.hurt=1;
   if(ang!==undefined){p.kbx=Math.cos(ang)*(kb||400);p.kby=Math.sin(ang)*(kb||400);}
   if(p.hp<=0){p.hp=0;p.dead=true;}}
-function loadLevel(L,seed){
+function loadLevel(L,seed,restart){
   S.level=L;S.seed=seed;
   S.pCount=Math.min(4,Math.max(1,Object.keys(S.players).length||1));
   S.cave=generateCave(seed,L);S.view={};
@@ -1115,19 +1375,33 @@ function loadLevel(L,seed){
     p.hp=100;p.dead=false;p.hurt=0;p.kbx=0;p.kby=0;
     p.art=false;p.gem=false;p.gemI=-1;p.trek=false;p.rev=0;}
 S.pulse=null;S.fx.length=0;S.fxV.length=0;
+S._resetT=0;S.door.open=false;initFlood();
+S.winPulse=null;S.winTint=0;
 S.enemies=S.cave.guardians.map(g=>({...g,kind:'guard'})).concat(
   S.cave.nests.map(n=>({...n,kind:'nest',state:0,t:0,dead:false})));
-S.conns.forEach(c=>c.send({t:'lvl',seed,level:L,
+S.conns.forEach(c=>c.send({t:'lvl',seed,level:L,restart:!!restart,fd:packFlood(),
   p:packPlayers(),e:packEnemies(),k:packKeys(),g:S.cave.gems.map(gg=>gg.taken?1:0),
   bt:S.cave.altar?Math.round((S.cave.altar.beam||0)*10):0,
   co:S.cave.coins.map(x=>x.taken?1:0),ch:S.cave.chests.map(x=>x.open?1:0),
   tk:S.cave.trek?S.cave.trek.taken:0}));
   $('hLvl').textContent=L;snd.level();
   $('deadMsg').style.display='none';updateDots();
+  if(restart){S.flash=1;
+    showToast(S.cave.cfg.flood?'THE WATER CLAIMED YOU — THIS DEPTH RESETS':'EVERY LIGHT WENT OUT — THIS DEPTH RESETS');}
   if(L%5===0){snd.milestone();S.flash=1;}}
 function triggerWin(){
   S.won=true;S.flash=1;S.shake=16;
   $('winMsg').style.display='block';snd.triumph();}
+/* when the team leaves through the door, the portal flings out a great sonar
+   pulse that momentarily lights the whole depth before the descent continues */
+function winPulseStart(){
+  const ex=S.cave&&S.cave.exit?S.cave.exit:{x:0,y:0};
+  S.winPulse={x:ex.x,y:ex.y,t:performance.now()};
+  S.winTint=1;S.flash=1;S.shake=Math.max(S.shake,10);}
+function winPulseBroadcast(){
+  const wp=S.winPulse;if(!wp)return;
+  S.doorN=(S.doorN||0)+1;
+  S.conns.forEach(c=>c.send({t:'wp',x:Math.round(wp.x),y:Math.round(wp.y),n:S.doorN}));}
 function nextLevel(){
   if(S.level>=25){
     S.conns.forEach(c=>c.send({t:'win'}));triggerWin();return;}
@@ -1137,6 +1411,23 @@ function hostTick(){
   const ps=S.players,all=Object.values(ps),alive=all.filter(p=>!p.dead);
   const dt=1/30;
   const lights=computeLights(alive,performance.now(),c);
+  /* the flood: after the grace period the water clambers from the abyss up
+     towards the ceiling, drowning anyone who lingers below the surface */
+  const fl=S.flood;
+  if(fl&&fl.active){
+    if(fl.delay>0){
+      fl.delay-=dt;
+      if(fl.delay<=0&&!fl.alerted){
+        fl.alerted=true;
+        snd.milestone();S.flash=0.6;S.shake=6;
+        if(S.players[S.myId])showToast('THE WATER RISES — FIND HIGHER GROUND');}
+    }else{
+      fl.y-=fl.speed*dt;
+      if(fl.y<=fl.minY){fl.y=fl.minY;fl.done=true;}
+      for(const p of alive){
+        if(p.y>fl.y+10){
+          const dg=clamp((p.y-fl.y-10)/70,0,1);
+          hurt(p,(6+30*dg)*dt,undefined,0);}}}}
   if(c.altar&&c.altar.beam>0){c.altar.beam-=dt;if(c.altar.beam<0)c.altar.beam=0;}
   for(const p of all){
     if(p.hurt>0)p.hurt-=dt;
@@ -1322,12 +1613,31 @@ function hostTick(){
   const wasOpen=S.door.open;
   S.door={open:keysLeft===0&&k>=need,k,need,keysLeft,keysN:S.cave.keys.length};
   if(!wasOpen&&S.door.open)snd.door();
-  /* level only advances once EVERY living player has reached the exit */
+  /* level only advances once EVERY living player has reached the exit — and a
+     key is gathered and a beam lights the door (door.open), then the portal
+     throws its sonar pulse to light the depth before the descent continues */
   S.door.atExit=0;
   if(S.door.open){
     for(const p of alive)
-      if(Math.hypot(S.cave.exit.x-p.x,S.cave.exit.y-p.y)<46)S.door.atExit++;
-    if(alive.length&&S.door.atExit===alive.length)nextLevel();}}
+      if(Math.hypot(S.cave.exit.x-p.x,S.cave.exit.y-p.y)<58)S.door.atExit++;
+    /* once the portal throws its victory pulse it WILL complete: the depth
+       reveals for its full 6s even if players drift from the door, so the
+       descent can never soft-lock behind a frozen timer */
+    if(alive.length&&S.door.atExit===alive.length){
+      if(!S.winPulse){winPulseStart();winPulseBroadcast();snd.milestone();}}}
+  /* the victory pulse always runs to completion once started: the depth
+     reveals for its full 7s (swell, hold, fade to black), THEN the descent
+     proceeds, even if the door closes again behind a drifting team */
+  if(S.winPulse&&performance.now()-S.winPulse.t>7000){S.winPulse=null;nextLevel();}
+  /* if every last light goes out together the team is overrun: nothing but
+     the depth itself remains, so it resets and the run begins again */
+  if(all.length&&!alive.length){
+    if(!S._resetT)S._resetT=1.6;
+    S._resetT-=dt;
+    if(S._resetT<=0){
+      S._resetT=0;
+      loadLevel(S.level,(Math.random()*4294967296)>>>0,true);}
+  }else S._resetT=0;}
 /* shared sonar: serial-tagged so clients replay it on their OWN clock on receipt */
 function triggerPulse(x,y){S.pulseN=(S.pulseN||0)+1;S.pulse={x,y,t:performance.now(),n:S.pulseN};}
 /* a burst of coins that sails up from a pickup toward who collected it.
@@ -1363,6 +1673,7 @@ function startHostLoops(){
         bt:S.cave.altar?Math.round((S.cave.altar.beam||0)*10):0,
         co:S.cave.coins.map(x=>x.taken?1:0),ch:S.cave.chests.map(x=>x.open?1:0),
         tk:S.cave.trek?S.cave.trek.taken:0,
+        fd:packFlood(),
         pulse:S.pulse?{x:Math.round(S.pulse.x),y:Math.round(S.pulse.y),t:Math.round(S.pulse.t),n:S.pulse.n}:null};
       S.conns.forEach(c=>c.send(msg));}},1000/30);}
 
@@ -1467,7 +1778,7 @@ function drawWorld(t,lights){
   ctx.save();ctx.translate(-S.cam.x,-S.cam.y);
   ctx.lineJoin='round';ctx.lineCap='round';
   /* rock walls */
-  ctx.strokeStyle='rgba(215,224,238,0.95)';ctx.lineWidth=1.4;
+  ctx.strokeStyle='rgba(232,240,252,1)';ctx.lineWidth=1.4;
   ctx.beginPath();
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
     const t2=g[y][x];if(t2!==1&&t2!==2)continue;
@@ -1480,12 +1791,48 @@ function drawWorld(t,lights){
     if(!isWc(x+1,y)){const a=cornerPt(cs,x+1,y),b=cornerPt(cs,x+1,y+1);
       ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);}}
   ctx.stroke();
+  /* light-catch rim on the rock: invisible in the dark, but once a beam
+     touches the wall it flares bright and helps the edge read clearly */
+  ctx.strokeStyle='rgba(175,220,255,0.5)';ctx.lineWidth=4.2;
+  ctx.stroke();
+  /* beam kisses on the rock: wherever a beam rakes the cave it lays a warm
+     pool and burns bright where its tip strikes a wall, so lit rock glows */
+  if(lights&&lights.length){
+    ctx.save();
+    ctx.globalCompositeOperation='lighter';
+    for(const l of lights){
+      const fade=clamp(l.fade||0.5,0.05,1),br=1+(l.boost||0)*0.5;
+      const ang=l.p.a,px=Math.cos(ang+Math.PI/2),py=Math.sin(ang+Math.PI/2);
+      const hw=(4+l.rt*0.5)*(1+l.join*0.3);
+      /* where the beam dies on a pool the warm kiss stops too, at the water */
+      const cut=beamWaterCut(l);
+      const tx2=cut?cut.x:l.tx,ty2=cut?cut.y:l.ty;
+      const lg2=ctx.createLinearGradient(l.p.x,l.p.y,tx2,ty2);
+      lg2.addColorStop(0,'rgba(205,232,255,'+(0.1*fade*br)+')');
+      lg2.addColorStop(1,'rgba(235,248,255,'+(0.22*fade*br)+')');
+      ctx.fillStyle=lg2;
+      ctx.beginPath();
+      ctx.moveTo(l.p.x+px*hw,l.p.y+py*hw);
+      ctx.lineTo(tx2+px*hw,ty2+py*hw);
+      ctx.lineTo(tx2-px*hw,ty2-py*hw);
+      ctx.lineTo(l.p.x-px*hw,l.p.y-py*hw);
+      ctx.closePath();ctx.fill();
+      /* the struck rock itself glows hot at the beam's tip — but a beam that
+         dies on water never reaches the rock behind it */
+      if(!cut){
+        const r=l.rt*2+16*br;
+        const g3=ctx.createRadialGradient(tx2,ty2,l.rt*0.3,tx2,ty2,r);
+        g3.addColorStop(0,'rgba(225,242,255,'+(0.34*fade*br)+')');
+        g3.addColorStop(1,'rgba(160,205,255,0)');
+        ctx.fillStyle=g3;
+        ctx.beginPath();ctx.arc(tx2,ty2,r,0,TAU);ctx.fill();}}
+    ctx.restore();}
   /* water body */
   ctx.fillStyle='rgba(50,110,220,0.16)';
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)
     if(g[y][x]===3)ctx.fillRect(x*cs+1,y*cs+1,cs-2,cs-2);
   /* water bank edges */
-  ctx.strokeStyle='rgba(120,170,230,0.5)';ctx.lineWidth=1;
+  ctx.strokeStyle='rgba(150,200,255,0.75)';ctx.lineWidth=1;
   ctx.beginPath();
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
     if(g[y][x]!==3)continue;
@@ -1499,8 +1846,22 @@ function drawWorld(t,lights){
     if(!isWt(x+1,y)){const a=cornerPt(cs,x+1,y),b=cornerPt(cs,x+1,y+1);
       ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);}}
   ctx.stroke();
+  /* the pool's top surface catches beams exactly like a wall does: build the
+     runs of open water surface (cells with no water above) and let the light
+     rim-and-kiss treatment rake them */
+  if(lights&&lights.length){
+    for(let y=y0;y<=y1;y++){
+      const isWt=(a,b)=>(a<0||b<0||a>=c.gw||b>=c.gh)?false:g[b][a]===3;
+      let sx=-1;
+      for(let x=x0;x<=x1+1;x++){
+        const isTop=!(x>x1)&&g[y][x]===3&&!isWt(x,y-1);
+        if(isTop&&sx<0)sx=x;
+        else if(!isTop&&sx>=0){
+          litWaterSurface(t,sx*cs,(x-1)*cs+cs,y*cs,cs,lights);
+          sx=-1;}}}
+  }
   /* animated smooth waves (continuous across cells) */
-  ctx.strokeStyle='rgba(130,200,255,0.55)';ctx.lineWidth=1;
+  ctx.strokeStyle='rgba(160,220,255,0.75)';ctx.lineWidth=1;
   ctx.beginPath();
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
     if(g[y][x]!==3)continue;
@@ -1546,6 +1907,37 @@ function drawWorld(t,lights){
     const px=Math.cos(s.ang+Math.PI/2)*7,py=Math.sin(s.ang+Math.PI/2)*7;
     ctx.beginPath();ctx.moveTo(s.bx+px,s.by+py);ctx.lineTo(s.tx,s.ty);
     ctx.lineTo(s.bx-px,s.by-py);ctx.stroke();}
+  /* a lit spike flares: the moment a beam rakes one its blade catches bright
+     and its point glows hot, so the hazard reads from across the cave even in
+     the murk */
+  if(lights&&lights.length){
+    ctx.save();
+    ctx.globalCompositeOperation='lighter';
+    for(const s of c.spikes){
+      let lit=0;
+      for(const l of lights){
+        const d1=distToSeg(s.bx,s.by,l.p.x,l.p.y,l.tx,l.ty);
+        const d2=distToSeg(s.tx,s.ty,l.p.x,l.p.y,l.tx,l.ty);
+        const d=Math.min(d1,d2);
+        if(d<40)lit=Math.max(lit,1-d/40);
+        if(lit>=1)break;}
+      if(lit<=0)continue;
+      const flick=0.8+0.2*Math.sin(t*0.02+s.ang*17+s.bx);
+      const px=Math.cos(s.ang+Math.PI/2)*7,py=Math.sin(s.ang+Math.PI/2)*7;
+      ctx.strokeStyle='rgba(255,214,130,'+(0.85*lit*flick)+')';
+      ctx.lineWidth=1.8+lit*1.2;
+      ctx.beginPath();ctx.moveTo(s.bx+px,s.by+py);ctx.lineTo(s.tx,s.ty);
+      ctx.lineTo(s.bx-px,s.by-py);ctx.stroke();
+      const blo=7+lit*15;
+      const g2=ctx.createRadialGradient(s.tx,s.ty,0,s.tx,s.ty,blo);
+      g2.addColorStop(0,'rgba(255,224,150,'+(0.5*lit*flick)+')');
+      g2.addColorStop(1,'rgba(255,190,110,0)');
+      ctx.fillStyle=g2;ctx.beginPath();ctx.arc(s.tx,s.ty,blo,0,TAU);ctx.fill();
+      if(lit>0.6){
+        ctx.strokeStyle='rgba(255,250,235,'+(0.9*lit*flick)+')';
+        ctx.lineWidth=1;
+        ctx.beginPath();ctx.arc(s.tx,s.ty,2+lit*1.6,0,TAU);ctx.stroke();}}
+    ctx.restore();}
   /* keys */
   for(const k of c.keys){
     if(k.taken||k.altar)continue;
@@ -1976,6 +2368,7 @@ ctx.restore();}
     ctx.fillText('SPAWN',c.spawn.x,c.spawn.y-16);
     ctx.fillText('EXIT',c.exit.x,c.exit.y-40);
     ctx.fillText('DEPTH '+S.level,c.spawn.x,c.spawn.y+30);}
+  floodFill(t,lights);
   ctx.restore();}
 function drawEyes(t){
   const Es=S.eyes;if(!Es||!Es.length)return;
@@ -2091,6 +2484,13 @@ function punch(x,y,r,alpha){
   g.addColorStop(0.6,'rgba(255,255,255,'+(alpha*0.5)+')');
   g.addColorStop(1,'rgba(255,255,255,0)');
   fctx.fillStyle=g;fctx.beginPath();fctx.arc(x,y,r,0,TAU);fctx.fill();}
+function punchC(x,y,r,alpha,rgb){
+  const c=rgb||'255,255,255';
+  const g=fctx.createRadialGradient(x,y,2,x,y,r);
+  g.addColorStop(0,'rgba('+c+','+alpha+')');
+  g.addColorStop(0.6,'rgba('+c+','+(alpha*0.5)+')');
+  g.addColorStop(1,'rgba('+c+',0)');
+  fctx.fillStyle=g;fctx.beginPath();fctx.arc(x,y,r,0,TAU);fctx.fill();}
 function buildFog(lights){
   fctx.setTransform(1,0,0,1,0,0);
   fctx.globalCompositeOperation='source-over';
@@ -2111,7 +2511,7 @@ function buildFog(lights){
   if(S.view)for(const[id,p]of Object.entries(S.view))
     if(!p.dead){
       const flick=1+0.04*Math.sin(performance.now()/700+id.length);
-      punch(p.x,p.y,55*flick,0.45);}
+      punch(p.x,p.y,64*flick,0.55);}
   if(lights.crosses)for(const x of lights.crosses){
     punch(x.x,x.y,x.r||46,0.72);
     punch(x.x,x.y,(x.r||46)*0.45,0.95);}
@@ -2177,9 +2577,64 @@ function buildFog(lights){
       const r=60+460*(1-Math.pow(1-pe,3));
       punch(S.pulse.x,S.pulse.y,r,0.9*(1-pe)*0.7);
       punch(S.pulse.x,S.pulse.y,r*0.5,0.8*(1-pe));}}
+  /* the door's victory sonar: a warm yellow wave of light that momentarily
+     reveals the whole depth from the exit, so players glimpse it before
+     descending — it swells out to fill the cave, holds, then fades */
+  if(S.winPulse){
+    const wp=S.winPulse,el=(performance.now()-wp.t);
+    if(el>0&&el<7000){
+      const p=clamp(el/7000,0,1);
+      const fullMax=((wp.x>0||wp.y>0)?Math.max(S.cave.cfg.worldW,S.cave.cfg.worldH)*1.3:2000);
+      const grow=0.75;                     /* first 75%: the wave swells out */
+      const holdEnd=0.92;                   /* then it hangs fully revealed */
+      const r=fullMax*(p<grow?clamp(p/grow,0,1):1);
+      const fade=p<grow?1:1-clamp((p-grow)/(1-grow),0,1);
+      punchC(wp.x,wp.y,r,0.8*fade,'255,214,110');
+      punchC(wp.x,wp.y,r*0.6,0.55*fade,'255,238,170');}}
   /* red watcher eyes, drawn on top of the void so they read as eyes in the dark */
   drawEyes(performance.now());
   fctx.globalCompositeOperation='source-over';}
+function beamWaterCut(l){
+  const c=S.cave;if(!c)return null;
+  if(!c.wtop&&!S.flood)return null;
+  const px0=l.p.x,py0=l.p.y,ex=l.tx,ey=l.ty;
+  const dx=ex-px0,dy=ey-py0;
+  let bestS=1.1,bx=0,by=0;
+  /* standing pools: the beam dies on the pooled surface, exactly where the
+     light-catch rim would run */
+  if(c.wtop)for(const line of c.wtop){
+    const y=line.y;
+    if(Math.min(py0,ey)>y||Math.max(py0,ey)<y)continue;
+    const s=(y-py0)/dy;if(s<=0||s>=1||s>=bestS)continue;
+    const x=px0+dx*s;
+    for(const run of line.runs){
+      if(x>=run[0]-22&&x<=run[1]+22){
+        bestS=s;bx=x;by=y;break;}}
+  }
+  /* rising flood: if it has claimed this column below the line, the beam
+     stops on the crest the same way */
+  const f=S.flood;
+  if(f&&f.active){
+    const ys=f.y;
+    if(ys>Math.min(py0,ey)&&ys<Math.max(py0,ey)){
+      const s=(ys-py0)/dy;
+      if(s>0&&s<1&&s<bestS){
+        const x=px0+dx*s;
+        const rr=clamp(Math.floor(ys/c.cs),0,c.gh-1);
+        let ss=-1;
+        for(let cx2=0;cx2<=c.gw;cx2++){
+          const open=cx2<c.gw&&(c.g[rr][cx2]===1||c.g[rr][cx2]===2||c.g[rr][cx2]===3);
+          if(open&&ss<0)ss=cx2;
+          else if(!open&&ss>=0){
+            if(x>=ss*c.cs-22&&x<=(cx2-1)*c.cs+c.cs+22){
+              bestS=s;bx=x;by=ys;}
+            ss=-1;}
+        }
+      }
+    }
+  }
+  if(bestS>=1)return null;
+  return{x:bx,y:by};}
 function drawBeams(lights){
   ctx.save();ctx.translate(-S.cam.x,-S.cam.y);ctx.lineCap='round';
   for(const l of lights){
@@ -2189,43 +2644,243 @@ function drawBeams(lights){
     const jo=1+(l.join||0)*0.5;
     /* the beam TAPERS: a thin filament at the player that flares open into a
        broad, rounded head at the tip, so the further it reaches the wider it
-       sweeps. Joining torches swell the whole lance. */
+       sweeps. Joining torches swell the whole lance. When the lance meets a
+       pool of water it dies on the surface instead — the light stops at the
+       waterline and kindles there, it does not dive under. */
+    const cut=beamWaterCut(l);
+    const tx=cut?cut.x:l.tx,ty2=cut?cut.y:l.ty;
     const ang=l.p.a,px=Math.cos(ang+Math.PI/2),py=Math.sin(ang+Math.PI/2);
     const glow0=1.6*jo;              /* half-width right at the hand */
     const glow1=13*(0.6+0.4*fade)*(1+(l.boost||0)*0.3)*jo;
     const core0=0.6*jo;
     const core1=4.6*(0.55+0.45*fade)*(1+(l.boost||0)*0.25)*jo;
     /* wide soft halo shell: a broad wedge that opens toward the tip */
-    let g=ctx.createLinearGradient(l.p.x,l.p.y,l.tx,l.ty);
+    let g=ctx.createLinearGradient(l.p.x,l.p.y,tx,ty2);
     g.addColorStop(0,'rgba(255,'+cg+','+cb+','+(0.08*br*fade)+')');
     g.addColorStop(1,'rgba(255,'+cg+','+cb+','+(0.3*br*fade)+')');
     ctx.fillStyle=g;
     ctx.beginPath();
     ctx.moveTo(l.p.x+px*glow0,l.p.y+py*glow0);
-    ctx.lineTo(l.tx+px*glow1,l.ty+py*glow1);
-    ctx.lineTo(l.tx-px*glow1,l.ty-py*glow1);
+    ctx.lineTo(tx+px*glow1,ty2+py*glow1);
+    ctx.lineTo(tx-px*glow1,ty2-py*glow1);
     ctx.lineTo(l.p.x-px*glow0,l.p.y-py*glow0);
     ctx.closePath();ctx.fill();
     /* bright hot core that flares toward the tip */
-    g=ctx.createLinearGradient(l.p.x,l.p.y,l.tx,l.ty);
+    g=ctx.createLinearGradient(l.p.x,l.p.y,tx,ty2);
     g.addColorStop(0,'rgba(255,'+cg+','+cb+','+(0.92*br*fade)+')');
     g.addColorStop(0.55,'rgba(255,'+cg+','+cb+','+(0.5*br*fade)+')');
     g.addColorStop(1,'rgba(255,'+cg+','+cb+',0)');
     ctx.fillStyle=g;
     ctx.beginPath();
     ctx.moveTo(l.p.x+px*core0,l.p.y+py*core0);
-    ctx.lineTo(l.tx+px*core1,l.ty+py*core1);
-    ctx.lineTo(l.tx-px*core1,l.ty-py*core1);
+    ctx.lineTo(tx+px*core1,ty2+py*core1);
+    ctx.lineTo(tx-px*core1,ty2-py*core1);
     ctx.lineTo(l.p.x-px*core0,l.p.y-py*core0);
     ctx.closePath();ctx.fill();
-    /* hot tip flare */
+    /* hot tip flare where the beam dies: on the rock, or on the water */
     if(fade>0.15){
       const tR=9*(0.6+0.4*fade)*(1+(l.boost||0)*0.5)*jo;
-      const g3=ctx.createRadialGradient(l.tx,l.ty,0,l.tx,l.ty,tR);
+      const g3=ctx.createRadialGradient(tx,ty2,0,tx,ty2,tR);
       g3.addColorStop(0,'rgba(255,'+cg+','+cb+','+(0.38*fade*br)+')');
       g3.addColorStop(1,'rgba(255,'+cg+','+cb+',0)');
-      ctx.fillStyle=g3;ctx.beginPath();ctx.arc(l.tx,l.ty,tR,0,TAU);ctx.fill();}}
+      ctx.fillStyle=g3;ctx.beginPath();ctx.arc(tx,ty2,tR,0,TAU);ctx.fill();}}
   ctx.restore();}
+/* rising flood water: unfurled every frame as one continuous smooth body that
+   rides the animated surface wave, split only where cavern walls interrupt —
+   no cell chunks, no seams. Drawn under the fog, it stays dark until a light
+   reaches it (torch beams, altar sweeps and glow, sonar pulses, open chests,
+   lit keys), and blazes where the light strikes, like the walls do. */
+function floodFill(t,lights){
+  const c=S.cave,f=S.flood;
+  if(!c||!f||!f.active)return;
+  const cs=c.cs,ys=f.y,ws=c.cfg.worldH;
+  if(ys>=ws)return;
+  const g=c.g;
+  /* the surface runs one continuous smooth wave across open water, broken
+     only where cavern walls interrupt, so it follows the cave — and since it
+     is drawn under the fog it only tells where light lands */
+  const rr=clamp(Math.floor(ys/cs),0,c.gh-1);
+  const x0=Math.max(0,Math.floor(S.cam.x/cs)-1),
+        x1=Math.min(c.gw-1,Math.ceil((S.cam.x+cv.width)/cs)+1);
+  let sx=-1;
+  for(let x=x0;x<=x1+1;x++){
+    const inR=x>x1,open=!inR&&(g[rr][x]===1||g[rr][x]===2);
+    if(open&&sx<0)sx=x;
+    else if(!open&&sx>=0){
+      waterBody(t,sx,x-1,ys,cs);
+      surfaceRun(t,sx,x-1,ys,cs,lights);
+      sx=-1;}}
+  /* bubbles surfacing off submerged players, so drowning reads from afar */
+  if(S.view)for(const[id,p]of Object.entries(S.view)){
+    if(p.dead||p.y<=ys+12)continue;
+    const seed=id.length+((id.charCodeAt(0)||0)%7);
+    for(let i=0;i<4;i++){
+      const ph=(t/340+i*0.27+seed*0.13)%1;
+      if(p.y-4-ph*26<ys-4)continue;
+      const bx=p.x+Math.sin(ph*6.28+seed)*10;
+      const by=p.y-4-ph*26;
+      ctx.strokeStyle='rgba(190,225,255,'+(0.35*(1-ph))+')';
+      ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(bx,by,1.5+ph*1.6,0,TAU);ctx.stroke();}}
+}
+/* one open-water span, poured from the animated crest down past the bottom of
+   the screen and graded from a bright skin into the deep, so the mass reads
+   smooth and continuous with no cell steps */
+function waterBody(t,a,b,ys,cs){
+  const c=S.cave;
+  const xa=a*cs,xb=b*cs+cs;
+  const wyAt=px=>ys+Math.sin(t/300+px*0.022)*3.2+Math.sin(t/150+px*0.05)*0.8;
+  const yb=Math.min(c.cfg.worldH,S.cam.y+cv.height+cs);
+  if(yb<=ys)return;
+  const N=Math.max(4,Math.round((xb-xa)/22));
+  const lg=ctx.createLinearGradient(xa,ys-10,xa,yb);
+  lg.addColorStop(0,'rgba(160,212,255,0.5)');
+  lg.addColorStop(0.02,'rgba(90,150,247,0.6)');
+  lg.addColorStop(0.08,'rgba(58,128,235,0.7)');
+  lg.addColorStop(1,'rgba(40,102,216,0.78)');
+  ctx.fillStyle=lg;
+  ctx.beginPath();
+  ctx.moveTo(xa,wyAt(xa));
+  for(let i=1;i<=N;i++){
+    const px=xa+(xb-xa)*i/N;
+    ctx.lineTo(px,wyAt(px));}
+  ctx.lineTo(xb,yb);ctx.lineTo(xa,yb);ctx.closePath();ctx.fill();
+}
+/* a beam lit across a water surface exactly like a wall surface: the crest
+   takes the same light-catch rim, the beam lays its warm kiss along the pool,
+   and the struck surface glows hot at the impact */
+function litWaterSurface(t,xa,xb,ys,cs,lights){
+  if(!lights||!lights.length||xb<=xa)return;
+  const wyAt=px=>ys+Math.sin(t/300+px*0.022)*3.2+Math.sin(t/150+px*0.05)*0.8;
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  for(const l of lights){
+    const y0=l.p.y,y1=l.ty;
+    const s=y1===y0?0:(ys-y0)/(y1-y0);
+    if(s<0||s>1)continue;
+    const xc=l.p.x+(l.tx-l.p.x)*s;
+    if(xc<xa-20||xc>xb+20)continue;
+    const fade=clamp(l.fade||0.5,0.05,1),br=1+(l.boost||0)*0.5;
+    const R=58+l.rt*1.5;
+    const x0=Math.max(xa,xc-R),x1=Math.min(xb,xc+R);
+    if(x1-x0<4)continue;
+    /* light-catch rim on the crest, exactly the rock's rim stroke */
+    ctx.strokeStyle='rgba(175,220,255,'+(0.5*Math.max(0.15,fade))+')';
+    ctx.lineWidth=4.2;
+    ctx.beginPath();
+    const M=Math.max(2,Math.round((x1-x0)/22));
+    for(let i=0;i<=M;i++){
+      const px=x0+(x1-x0)*i/M,wy=wyAt(px);
+      if(i)ctx.lineTo(px,wy);else ctx.moveTo(px,wy);}
+    ctx.stroke();
+    /* the beam's warm kiss laid across the pool, clipped to its lit span */
+    ctx.save();
+    ctx.beginPath();ctx.rect(x0,ys-10,x1-x0,cs*3+30);ctx.clip();
+    const ang=l.p.a,p2x=Math.cos(ang+Math.PI/2),p2y=Math.sin(ang+Math.PI/2);
+    const hw=(4+l.rt*0.5)*(1+(l.join||0)*0.3);
+    const lg2=ctx.createLinearGradient(l.p.x,l.p.y,l.tx,l.ty);
+    lg2.addColorStop(0,'rgba(205,232,255,'+(0.1*fade*br)+')');
+    lg2.addColorStop(1,'rgba(235,248,255,'+(0.22*fade*br)+')');
+    ctx.fillStyle=lg2;
+    ctx.beginPath();
+    ctx.moveTo(l.p.x+p2x*hw,l.p.y+p2y*hw);
+    ctx.lineTo(l.tx+p2x*hw,l.ty+p2y*hw);
+    ctx.lineTo(l.tx-p2x*hw,l.ty-p2y*hw);
+    ctx.lineTo(l.p.x-p2x*hw,l.p.y-p2y*hw);
+    ctx.closePath();ctx.fill();
+    ctx.restore();
+    /* where the beam dies on the water the line catches it: a hot core at
+       the strike, a flare running along the crest so the pool edge reads
+       from across the cave, and a shaft of light thrown upward so the
+       impact itself is unmistakable */
+    const xcY=wyAt(xc);
+    const R2=Math.max(42,l.rt*1.9+34*br);
+    const g3=ctx.createRadialGradient(xc,xcY,l.rt*0.15,xc,xcY,R2);
+    g3.addColorStop(0,'rgba(252,254,255,'+(0.9*fade*br)+')');
+    g3.addColorStop(0.28,'rgba(214,240,255,'+(0.5*fade*br)+')');
+    g3.addColorStop(1,'rgba(150,205,255,0)');
+    ctx.fillStyle=g3;
+    ctx.beginPath();ctx.arc(xc,xcY,R2,0,TAU);ctx.fill();
+    /* the crest keeps the light: a low flare runs along the waterline away
+       from the strike, tracing the pool edge in both directions */
+    const R3=R2*1.9,fW=R3*2;
+    const fL=ctx.createLinearGradient(xc-R3,0,xc+R3,0);
+    fL.addColorStop(0,'rgba(196,228,255,0)');
+    fL.addColorStop(0.5,'rgba(232,248,255,'+(0.32*fade*br)+')');
+    fL.addColorStop(1,'rgba(196,228,255,0)');
+    ctx.fillStyle=fL;
+    const fM=Math.max(3,Math.round(fW/26));
+    ctx.beginPath();
+    for(let i=0;i<=fM;i++){
+      const pxx=xc-R3+fW*i/fM,wy=wyAt(pxx);
+      if(i)ctx.lineTo(pxx,wy+1);else ctx.moveTo(pxx,wy+1);}
+    for(let i=fM;i>=0;i--){
+      const pxx=xc-R3+fW*i/fM,wy=wyAt(pxx);
+      ctx.lineTo(pxx,wy+8);}
+    ctx.closePath();ctx.fill();
+    /* a shaft of scattered light climbs off the impact */
+    const sh=ctx.createLinearGradient(0,xcY-6,0,xcY-98);
+    sh.addColorStop(0,'rgba(226,246,255,'+(0.4*fade*br)+')');
+    sh.addColorStop(1,'rgba(226,246,255,0)');
+    ctx.fillStyle=sh;
+    ctx.beginPath();ctx.ellipse(xc,xcY-46,11,46,0,0,TAU);ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* the glinting animated crest riding on top of the smooth body. Where a beam
+   hits the flood it lights the water exactly like a wall surface catches
+   light: the crest takes the same light-catch rim, the beam lays its warm
+   kiss along the pool, and the struck surface glows hot at the impact */
+function surfaceRun(t,a,b,ys,cs,lights){
+  const xa=a*cs,xb=b*cs+cs,N=Math.max(4,Math.round((xb-xa)/22));
+  const wyAt=px=>ys+Math.sin(t/300+px*0.022)*3.2+Math.sin(t/150+px*0.05)*0.8;
+  ctx.strokeStyle='rgba(205,240,255,'+(0.65+0.18*Math.sin(t/250+xa))+')';
+  ctx.lineWidth=1.7;
+  ctx.beginPath();
+  for(let i=0;i<=N;i++){
+    const px=xa+(xb-xa)*i/N;
+    if(i)ctx.lineTo(px,wyAt(px));else ctx.moveTo(px,wyAt(px));}
+  ctx.stroke();
+  litWaterSurface(t,xa,xb,ys,cs,lights);
+  /* altar sweeps catch the crest too and fling the same spreading glow */
+  const alt=S.cave&&S.cave.altar;
+  if(alt&&alt.active&&(alt.beam||0)>0){
+    const N2=Math.max(3,Math.round((xb-xa)/46));
+    for(let i=0;i<=N2;i++){
+      const px=xa+(xb-xa)*i/N2;
+      if(altarSweeps(px,ys,40)){
+        waterSpread(t,px,ys,95,xa,xb,0.65,cs);
+        break;}}
+  }
+}
+/* a beam-lit pool on the water: the glow dives into the mass and runs wide
+   along the crest, hottest where the light lands, falling off with distance */
+function waterSpread(t,xc,ys,R,xa,xb,power,cs){
+  const x0=Math.max(xa,xc-R),x1=Math.min(xb,xc+R);
+  if(x1-x0<3)return;
+  const peak=0.5*power;
+  const g1=ctx.createLinearGradient(x0,ys-6,x0,ys+cs*3);
+  g1.addColorStop(0,'rgba(178,222,255,'+(peak*0.8)+')');
+  g1.addColorStop(0.35,'rgba(122,178,255,'+(peak*0.5)+')');
+  g1.addColorStop(1,'rgba(84,132,235,0)');
+  ctx.fillStyle=g1;
+  ctx.fillRect(x0,ys-6,x1-x0,cs*3+6);
+  /* the light sits brightest at the impact and fades as it spreads */
+  const mid=(x1-x0)?clamp((xc-x0)/(x1-x0),0.08,0.92):0.5;
+  const g2=ctx.createLinearGradient(x0,0,x1,0);
+  g2.addColorStop(0,'rgba(200,232,255,0)');
+  g2.addColorStop(mid,'rgba(222,244,255,'+(peak*0.9)+')');
+  g2.addColorStop(1,'rgba(200,232,255,0)');
+  ctx.fillStyle=g2;
+  ctx.fillRect(x0,ys-8,x1-x0,24);
+  /* the hot crest line rides the lit span, like the wall's light-catch rim */
+  ctx.strokeStyle='rgba(240,250,255,'+(0.75*power)+')';
+  ctx.lineWidth=2.4;
+  ctx.beginPath();
+  ctx.moveTo(x0,ys+Math.sin(t/240+x0)*1.5);
+  ctx.lineTo(x1,ys+Math.sin(t/240+x1)*1.5);
+  ctx.stroke();}
 function frame(){
   requestAnimationFrame(frame);
   if(!S.started||!S.cave)return;
@@ -2286,6 +2941,29 @@ function frame(){
       ctx.strokeStyle='rgba(190,240,255,'+(0.3*(1-pe))+')';
       ctx.beginPath();ctx.arc(S.pulse.x-S.cam.x,S.pulse.y-S.cam.y,r*0.7,0,TAU);ctx.stroke();
     }else S.pulse=null;}
+  if(S.winPulse){
+    const el=(performance.now()-S.winPulse.t);
+    if(el>0&&el<7000){
+      const p=clamp(el/7000,0,1);
+      const fullMax=((S.winPulse.x>0||S.winPulse.y>0)?Math.max(S.cave.cfg.worldW,S.cave.cfg.worldH)*1.3:2000);
+      const grow=0.75,holdEnd=0.92;
+      const r=fullMax*(p<grow?clamp(p/grow,0,1):1);
+      const fade=p<grow?1:1-clamp((p-grow)/(1-grow),0,1);
+      ctx.strokeStyle='rgba(255,214,110,'+(0.7*fade)+')';
+      ctx.lineWidth=4;
+      ctx.beginPath();ctx.arc(S.winPulse.x-S.cam.x,S.winPulse.y-S.cam.y,r,0,TAU);ctx.stroke();
+      ctx.strokeStyle='rgba(255,238,170,'+(0.45*fade)+')';
+      ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(S.winPulse.x-S.cam.x,S.winPulse.y-S.cam.y,r*0.8,0,TAU);ctx.stroke();
+      /* warm golden wash over the whole screen while the depth is revealed */
+      const gy=ctx.createRadialGradient(cv.width/2,cv.height/2,
+        Math.min(cv.width,cv.height)*0.3,cv.width/2,cv.height/2,
+        Math.max(cv.width,cv.height)*0.75);
+      gy.addColorStop(0,'rgba(255,220,140,0)');
+      gy.addColorStop(1,'rgba(255,200,90,'+(0.22*fade)+')');
+      ctx.fillStyle=gy;ctx.fillRect(0,0,cv.width,cv.height);
+      S.winTint=Math.max(S.winTint||0,fade*0.9);}
+    }
   if(S.flash>0){
     S.flash-=0.018;
     const fa=Math.max(0,S.flash);
@@ -2348,6 +3026,11 @@ setInterval(()=>{
   const all=Object.values(S.players),alive=all.filter(p=>!p.dead);
   const me=S.players[S.myId];
   $('hCount').textContent=alive.length;
+  if(S.cave&&S.flood&&S.flood.active){
+    const pct=clamp(100*(1-S.flood.y/S.cave.cfg.worldH),0,99);
+    $('hFlood').textContent=' \u25B2 WATER '+Math.round(pct)+'%';
+    $('hFlood').style.color=pct>60?'#ff7a6a':'#9fd0ff';
+  }else $('hFlood').textContent='';
   if(me){
     $('hpBar').style.width=me.hp+'%';
     $('hpBar').style.background=me.hp>50?'#7dff9a':'#ff6a5a';}
@@ -2356,7 +3039,7 @@ setInterval(()=>{
   if(S.cave&&S.door.open){
     let at=0;
     for(const p of alive)
-      if(Math.hypot(p.x-S.cave.exit.x,p.y-S.cave.exit.y)<46)at++;
+      if(Math.hypot(p.x-S.cave.exit.x,p.y-S.cave.exit.y)<58)at++;
     $('hDoor').textContent='ESCAPE '+at+'/'+alive.length+' AT EXIT';
   }else $('hDoor').textContent=kl>0?'DOOR: LOCKED':
     ('DOOR: '+(S.door.open?'OPEN':'DARK')+' '+S.door.k+'/'+S.door.need);

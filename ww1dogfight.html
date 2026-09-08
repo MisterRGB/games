@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WWI Dogfight — RFC vs Fokker</title>
+<title>WWII Dogfight — Allies vs Luftwaffe</title>
 <style>
   :root{ --allied:#4e9ad0; --luft:#d84a3a; --gold:#ffd257; --paper:#efe3c4; --ink:#241f18; }
   *{margin:0;padding:0;box-sizing:border-box}
@@ -74,9 +74,53 @@
   .pln-btn small{display:block;font-family:Consolas,monospace;font-size:10px;color:#7f8ea0;font-weight:400;margin-top:2px}
   .pln-btn:hover{border-color:#7fb2e0}
   .pln-btn.on{border-color:#ffcf4a;background:#20334a;color:#ffe9a8;box-shadow:0 0 10px rgba(255,207,74,.35)}
-  .color-picker{display:flex;flex-wrap:wrap;gap:6px}
+  .color-picker{display:none}
   .col-sq{width:26px;height:26px;border-radius:50%;border:2px solid #000;cursor:pointer;box-sizing:border-box}
   .col-sq.on{border-color:#ffcf4a;outline:2px solid #ffcf4a;box-shadow:0 0 8px rgba(255,207,74,.5)}
+
+
+  :root{--allied:#4c9bd7;--luft:#e15a45;--steel:#9eb7c7;--gold:#f2c55c;--cream:#edf2ea}
+  body{background:#06111a;color:var(--cream)}
+  .overlay{background:radial-gradient(ellipse at 50% 35%,rgba(20,52,72,.28),rgba(3,8,12,.92));backdrop-filter:blur(3px)}
+  .card{background:linear-gradient(180deg,rgba(21,33,42,.97),rgba(8,15,21,.97));color:#eaf2f6;border:1px solid rgba(215,229,236,.26);box-shadow:0 24px 80px rgba(0,0,0,.7);padding:28px 34px;max-width:760px;border-radius:14px;transform:none;position:relative;overflow:hidden}
+  .card:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(135deg,rgba(76,155,215,.10),transparent 34%,rgba(225,90,69,.06) 76%,transparent);mix-blend-mode:screen}
+  .card h1{color:#f4f7f8;background:none;-webkit-text-fill-color:initial;text-shadow:0 3px 0 #000,0 0 28px rgba(180,220,240,.12);font-size:52px;letter-spacing:2px}
+  .card h1 .vs{color:#aab9c2;margin-top:7px;letter-spacing:6px}
+  .brief,.hint,.lobbyinfo{color:#cbd6dc}
+  .tag{border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.04);border-radius:4px}
+  .tag a{color:#72b9ef}.tag l{color:#ff7c65}
+  .col h3{border-radius:4px}.col.c-a h3{background:linear-gradient(90deg,#245b86,#3e86b8)}.col.c-l h3{background:linear-gradient(90deg,#783429,#b54b3d)}
+  .btn{border:1px solid rgba(255,255,255,.2);border-radius:7px;box-shadow:0 8px 20px rgba(0,0,0,.3)}
+  .btn:hover{filter:brightness(1.12);box-shadow:0 11px 26px rgba(0,0,0,.42)}
+  .btn.gold{background:linear-gradient(180deg,#f5d06a,#bd8b23);color:#16130c}.btn.allied{background:linear-gradient(180deg,#4b9dd8,#2d6691)}.btn.luft{background:linear-gradient(180deg,#df644f,#8f3529)}
+  .field input{background:#101c25;color:#eef5f8;border:1px solid rgba(255,255,255,.25);border-radius:6px;text-transform:none}
+  .hangar h3{background:linear-gradient(90deg,#1e3a4f,#2e5d78)!important;border-radius:5px}
+  .plane-picker{display:none}
+  .pln-btn{min-width:0;border:1px solid rgba(180,210,225,.18);border-radius:8px;background:linear-gradient(180deg,#172630,#0c161d);padding:10px 8px}
+  .pln-btn.on{border-color:#f3cf65;background:linear-gradient(180deg,#25384a,#15252f);box-shadow:0 0 20px rgba(243,207,101,.15)}
+  .pln-btn .sil{font-size:24px;display:block;margin-bottom:2px}.pln-btn small{color:#91a6b2}
+  .menu-crest{position:absolute;left:22px;top:22px;font:800 11px/1 Consolas,monospace;color:#8fa7b3;letter-spacing:2px;border:1px solid rgba(255,255,255,.12);padding:6px 8px;border-radius:4px}
+  .menu-sub{font:800 12px Consolas,monospace;letter-spacing:3px;color:#8fa7b3;margin-top:8px}
+  #lobby .card,#out .card,#win .card{background:linear-gradient(180deg,rgba(19,30,39,.98),rgba(7,13,18,.98))}
+  table th,table td{border-color:rgba(180,200,214,.18)} table th{background:#182631;color:#dbe7ed}
+  .net{color:#9eb7c7}.killfeed{top:82px}
+
+  /* ---- visual overhaul ---- */
+  .card{max-width:820px!important;background:linear-gradient(180deg,rgba(11,21,28,.98),rgba(5,10,14,.98));border:1px solid rgba(170,195,208,.18);box-shadow:0 30px 100px rgba(0,0,0,.78),inset 0 1px 0 rgba(255,255,255,.04);}
+  .card:after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.008) 3px 4px);opacity:.35}
+  .menu-crest{background:rgba(255,255,255,.03)}
+  .auto-assignment{margin-top:12px;padding:12px 14px;border:1px solid rgba(180,200,212,.12);border-radius:8px;background:linear-gradient(180deg,#101c24,#0b141b);text-align:left}
+  .auto-assignment h3{margin:0 0 5px!important;background:none!important;color:#e6eef2;font-size:15px}
+  .auto-badge{font:800 11px Consolas,monospace;letter-spacing:.4px;color:#9eb1bc;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .side-dot{width:8px;height:8px;border-radius:50%;display:inline-block}.side-dot.blue{background:#5aa9e6;box-shadow:0 0 10px rgba(90,169,230,.45)}.side-dot.red{background:#e45a4d;box-shadow:0 0 10px rgba(228,90,77,.45)}
+  .divider{opacity:.4;margin:0 3px}
+  .row{gap:14px}.col{min-width:0}.col h3{padding:7px 9px;font-size:14px;letter-spacing:1.2px}
+  .field input{height:42px;font-size:17px;background:rgba(5,12,17,.85);border-color:rgba(180,205,218,.17);box-shadow:inset 0 1px 5px rgba(0,0,0,.35)}
+  .btn{height:44px;font-size:18px;letter-spacing:1.5px}
+  #lobby .card{max-width:760px}.team-banner{padding:10px 12px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);text-align:left}
+  table{border-spacing:0 3px;border-collapse:separate} th{background:rgba(255,255,255,.06)!important;text-transform:uppercase;letter-spacing:.6px}td{background:rgba(255,255,255,.025);padding:7px 8px!important}
+  #hud{filter:saturate(.96) contrast(1.04)}
+
 </style>
 </head>
 <body>
@@ -89,63 +133,33 @@
 <!-- ============ MAIN MENU ============ -->
 <div id="menu" class="overlay show">
   <div class="card">
-    <h1>WWI DOGFIGHT<span class="vs">— RFC vs FOKKER —</span></h1>
-    <div class="brief">LAN team dogfight over the Western Front, 1917. Up to 30 pilots.
-      One player hosts a room; everyone else joins with the <b>room code</b>.
-      Everyone flies the classic <b>biplane fighter</b>, split into two sides:
-      <span class="tag"><a>RFC</a></span> (blue trim) and
-      <span class="tag"><l>FOKKER</l></span> (red trim).</div>
+    <div class="menu-crest">E.T.O. / 1944</div>
+    <h1>WAR IN THE SKIES<span class="vs">— ALLIES VS LUFTWAFFE —</span></h1>
+    <div class="menu-sub">MULTIPLAYER COMBAT • EUROPEAN THEATRE • 1944</div>
+    <div class="brief" style="margin-top:16px">A faster, harder-hitting WWII dogfight. Enter a callsign, join a squadron, and take to the sky. Your side and fighter are assigned automatically, with colour, silhouette and callsign markers making friend-or-foe identification immediate.</div>
     <div class="row">
-      <div class="col c-a">
-        <h3>RFC</h3>
-        <ul>
-          <li>Biplane fighter — twin wings, rotary engine</li>
-          <li>Team identify: <b>BLUE</b> trim &amp; roundel</li>
-        </ul>
-      </div>
-      <div class="col c-l">
-        <h3>FOKKER</h3>
-        <ul>
-          <li>Same biplane — grey/green scheme</li>
-          <li>Team identify: <b>RED</b> trim &amp; cross</li>
-        </ul>
-      </div>
+      <div class="col c-a"><h3>ALLIED FORCES</h3><ul><li><b>Blue identification</b> + roundel markings</li><li>P-51D Mustang / Spitfire Mk IX</li><li>Fast response, strong energy fighting</li></ul></div>
+      <div class="col c-l"><h3>LUFTWAFFE</h3><ul><li><b>Red identification</b> + black/white crosses</li><li>Bf 109G / Fw 190A</li><li>Powerful climb and close-range punch</li></ul></div>
     </div>
-    <div class="hangar">
-      <h3 style="background:#1f3a5f">PAINT YOUR PLANE</h3>
-      <p class="hangar-sub">Pick a paint scheme — everyone sees your choice. Your team colour (blue/red) marks your side.</p>
-      <div class="color-picker" id="colorPicker"></div>
-    </div>
+    <div class="hangar auto-assignment"><h3>AIRCRAFT ASSIGNMENT</h3><p class="hangar-sub">Your side and fighter are assigned automatically when the squadron is formed. No aircraft selection — just enter a callsign and scramble.</p><div class="auto-badge"><span class="side-dot blue"></span> ALLIES → P-51D / SPITFIRE <span class="divider">•</span> <span class="side-dot red"></span> LUFTWAFFE → Bf 109G / Fw 190A</div></div>
     <div class="row">
-      <div class="col">
-        <h3 style="background:#8a5a1f">HOST A ROOM</h3>
-        <div class="field"><label>Your callsign</label><input id="hostName" maxlength="14" value="">
-          <button class="btn gold" id="hostBtn" style="margin-top:8px;width:100%">Create Room &amp; Fly</button></div>
-      </div>
-      <div class="col">
-        <h3 style="background:#555">JOIN A ROOM</h3>
-        <div class="field"><label>Room code</label><input id="joinCode" maxlength="6" placeholder="ABCDEF">
-          <label style="margin-top:8px">Your callsign</label><input id="joinName" maxlength="14" value="">
-          <button class="btn allied" id="joinBtn" style="margin-top:8px;width:100%">Join Room</button></div>
-      </div>
+      <div class="col"><h3 style="background:#27536d">CREATE SORTIE</h3><div class="field"><label>CALLSIGN</label><input id="hostName" maxlength="14" placeholder="MUSTANG 1"><button class="btn gold" id="hostBtn" style="margin-top:8px;width:100%">Create Room &amp; Scramble</button></div></div>
+      <div class="col"><h3 style="background:#5a3e39">JOIN SORTIE</h3><div class="field"><label>ROOM CODE</label><input id="joinCode" maxlength="6" placeholder="ABCDEF"><label style="margin-top:8px">CALLSIGN</label><input id="joinName" maxlength="14" placeholder="RED 2"><button class="btn allied" id="joinBtn" style="margin-top:8px;width:100%">Join Room</button></div></div>
     </div>
-    <div class="keys" style="font-size:12.5px">
-      Flight: <b>Mouse</b> aim/steer • <b>W/S</b> throttle • <b>↑/↓</b> pitch • <b>A/D or ←/→</b> turn •
-      <b>Left-click/Space</b> fire • <b>M</b> sound • <b>Tab</b> scoreboard
-    </div>
-    <div class="hint">Anyone with the room code can jump in at any time. Host's browser must stay open.</div>
+    <div class="keys" style="font-size:12.5px;margin-top:6px">Flight: <b>Mouse</b> aim/steer • <b>W/S</b> throttle • <b>↑/↓</b> pitch • <b>A/D</b> turn • <b>Click/Space</b> fire • <b>M</b> sound • <b>Tab</b> scoreboard</div>
+    <div class="hint">Blue = friendly • Red = hostile • Your own callsign is shown with a bright centre marker. Host browser must remain open.</div>
   </div>
 </div>
 
 <!-- ============ LOBBY (team assignment wait) ============ -->
 <div id="lobby" class="overlay">
   <div class="card">
-    <h1>HANGAR<span class="vs">— TEAM ASSIGNMENT —</span></h1>
+    <h1>HANGAR<span class="vs">— SQUADRON BRIEFING —</span></h1>
     <div class="lobbyinfo">Room code: <span id="lbCode">—</span> &nbsp;•&nbsp; Pilots: <span id="lbCount">0</span>/30</div>
-    <div class="team-banner">You are flying for the <b id="lbTeamName">RFC</b>
+    <div class="team-banner">You are flying for the <b id="lbTeamName">ALLIES</b>
       <span id="lbTeamSwatch" style="display:inline-block;width:26px;height:14px;border:1px solid #000;vertical-align:middle"></span></div>
-    <table id="lbTable"><thead><tr><th>Pilot</th><th>Team</th><th>Ready</th></tr></thead><tbody></tbody></table>
-    <div class="brief">Teams are rebalanced automatically as pilots arrive.</div>
+    <table id="lbTable"><thead><tr><th>CALLSIGN</th><th>SIDE</th><th>AIRCRAFT</th><th>STATUS</th></tr></thead><tbody></tbody></table>
+    <div class="brief">Squadrons are balanced automatically. Aircraft and callsign colours make friend-or-foe identification immediate.</div>
     <button class="btn gold" id="readyBtn">Ready Up</button>
     <div class="hint" id="lbWaitHint"></div>
   </div>
@@ -199,9 +213,9 @@ if (typeof THREE === 'undefined') {
 <script>
 'use strict';
 /* =====================================================================
-   WWI DOGFIGHT — RFC vs Fokker LAN dogfight
+   WWII DOGFIGHT — Allies vs Luftwaffe LAN dogfight
    - PeerJS star network (Host is authoritative relay)
-   - Up to 30 players, auto team-split into RFC / Fokker
+   - Up to 30 players, auto team-split into ALLIES / LUFTWAFFE
    - Enhanced visuals: animated 3-blade props, cockpits, wing guns,
      tracer rounds, muzzle flash, team skins, damage smoke, crash fire
 ===================================================================== */
@@ -213,6 +227,8 @@ const CFG={
   gunRate:12, bulletSpeed:520, dmg:7,
   minAlt:18, worldR:2400, respawnT:4,
 sendHz:18, interp:0.12,
+  minCombatants:6, botSpeed:.78,
+  boatDmg:8, boatScore:150, boatRespawn:18,
   // Win target scales with players: ~25 kills up to 10 pilots, ramping up to
   // 50-60 kills when the lobby is bigger (more targets in the air).
   winTarget(){
@@ -233,63 +249,72 @@ const _q=new THREE.Quaternion(),_v=new THREE.Vector3(),_v2=new THREE.Vector3(),
 
 /* ---------------- renderer ---------------- */
 const cv=document.getElementById('world');
-const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,powerPreference:'high-performance'});
 renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.9));
+renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x7fb4e0);
-scene.fog=new THREE.Fog(0x9fc6ea,800,3300);
+scene.fog=new THREE.Fog(0x9fc6ea,1450,7600);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.5,15000);
-const hemi=new THREE.HemisphereLight(0xcfe2f2,0x6a8a5a,1.0); scene.add(hemi);
+const hemi=new THREE.HemisphereLight(0xcfe5f4,0x293829,1.15); scene.add(hemi);
 const sun=new THREE.DirectionalLight(0xfff1cf,1.2); sun.position.set(0.4,0.9,0.3); scene.add(sun);
 
-// ---- ocean: static textured water ----
-// The surface uses a single generated (seeded) canvas texture, so it is
-// completely static — no animation to flash or shimmer. The day/night cycle
-// tints it via material.color.
-function makeWaterTex(){
-  const D=512;
-  const c=document.createElement('canvas'); c.width=c.height=D;
-  const x=c.getContext('2d');
-  x.fillStyle='#9aa0a8'; x.fillRect(0,0,D,D);   // neutral base (tinted later)
-  // draw a blob wrapped into every neighbouring tile so the pattern stays
-  // periodic and tiles seamlessly (r*2<D so a blob spans at most one seam)
-  function blob(px,py,r,inner,outer){
-    for(const ox of [-D,0,D]) for(const oy of [-D,0,D]){
-      const cx=px+ox, cy=py+oy;
-      const g=x.createRadialGradient(cx,cy,0,cx,cy,r);
-      g.addColorStop(0,inner); g.addColorStop(1,outer);
-      x.fillStyle=g; x.fillRect(cx-r,cy-r,r*2,r*2);
+// ---- ocean: large procedural ocean shader, inspired by the three.js ocean example ----
+// Uses layered Gerstner-style waves, a view-angle Fresnel term, sun glints and
+// distance haze so the water reads as an ocean rather than a flat textured plane.
+const oceanU={
+  uTime:{value:0},uWater:{value:new THREE.Color(0x155b72)},uDeep:{value:new THREE.Color(0x06384d)},
+  uSkyH:{value:new THREE.Color(0x9fc6ea)},uSkyZ:{value:new THREE.Color(0x4f86c4)},
+  uSun:{value:new THREE.Vector3(.35,.86,.18)},uSunCol:{value:new THREE.Color(0xffe7bc)}
+};
+const wgeo=new THREE.PlaneGeometry(30000,22000,256,192); wgeo.rotateX(-Math.PI/2);
+const oceanMat=new THREE.ShaderMaterial({
+  uniforms:oceanU, transparent:false, depthWrite:true, fog:false,
+  vertexShader:`uniform float uTime; varying vec3 vWorld; varying vec3 vNormal; varying float vHeight;
+    vec3 gerstner(vec3 p, vec2 dir, float steep, float len, float speed, float amp){
+      vec2 d=normalize(dir); float k=6.2831853/len; float f=k*(dot(d,p.xz)-uTime*speed); float a=amp;
+      return vec3(d.x*steep*a*cos(f), a*sin(f), d.y*steep*a*cos(f));
     }
-  }
-  // broad soft swell mottling (lighter)
-  for(let i=0;i<26;i++){
-    const r=70+Math.random()*120;
-    const a=0.10+Math.random()*0.12;
-    blob(Math.random()*D,Math.random()*D,r,
-      'rgba(255,255,255,'+a+')','rgba(255,255,255,0)');
-  }
-  // finer dark ripple mottling
-  for(let i=0;i<46;i++){
-    const r=9+Math.random()*24;
-    const a=0.07+Math.random()*0.10;
-    blob(Math.random()*D,Math.random()*D,r,
-      'rgba(10,16,30,'+a+')','rgba(10,16,30,0)');
-  }
-  const t=new THREE.CanvasTexture(c);
-  t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.repeat.set(36,24);
-  return t;
-}
-const wgeo=new THREE.PlaneGeometry(20000,14000,8,6);
-wgeo.rotateX(-Math.PI/2);
-const waterTex=makeWaterTex();
-const water=new THREE.Mesh(wgeo,
-  new THREE.MeshLambertMaterial({map:waterTex,color:0x3c86a8}));
-water.position.set(0,0,-3000); scene.add(water);
-water.frustumCulled=false;      // huge plane: never let culling drop it
-water.renderOrder=1;            // draw after the opaque terrain/planes
-function updateWater(dt){}      // static surface; kept as a no-op for tick call
+    void main(){
+      vec3 p=position;
+      vec3 w=vec3(0.0);
+      w+=gerstner(p,vec2(1.0,.18),.55,260.0,26.0,2.3);
+      w+=gerstner(p,vec2(-.32,1.0),.42,150.0,19.0,1.45);
+      w+=gerstner(p,vec2(.72,.64),.28,86.0,14.0,.80);
+      w+=gerstner(p,vec2(-.82,.38),.20,42.0,9.0,.38);
+      w+=gerstner(p,vec2(.42,-.91),.13,22.0,5.5,.17);
+      p+=w; vHeight=w.y;
+      float eps=1.5;
+      float xw=sin((p.x*.024+p.z*.004)-uTime*1.2)*.028 + sin(p.z*.055-uTime*.8)*.012;
+      float zw=sin((p.z*.018-p.x*.006)-uTime*.95)*.028 + sin(p.x*.05+uTime*.7)*.012;
+      vNormal=normalize(vec3(-xw,1.0,-zw));
+      vec4 world=modelMatrix*vec4(p,1.0); vWorld=world.xyz;
+      gl_Position=projectionMatrix*viewMatrix*world;
+    }`,
+  fragmentShader:`uniform vec3 uWater,uDeep,uSkyH,uSkyZ,uSun,uSunCol; varying vec3 vWorld; varying vec3 vNormal; varying float vHeight;
+    void main(){
+      vec3 V=normalize(cameraPosition-vWorld); vec3 N=normalize(vNormal);
+      float fres=pow(1.0-clamp(dot(V,N),0.0,1.0),4.0);
+      vec3 R=reflect(-V,N);
+      float skyH=clamp(R.y*.5+.5,0.0,1.0);
+      vec3 sky=mix(uSkyH,uSkyZ,pow(skyH,.65));
+      float rip=0.5+0.5*sin(vWorld.x*.085+sin(vWorld.z*.035)*2.2+vHeight*1.5);
+      vec3 base=mix(uDeep,uWater,0.48+rip*.20);
+      float sunSpec=pow(max(dot(reflect(-normalize(uSun),N),V),0.0),90.0);
+      float longSpec=pow(max(dot(reflect(-normalize(uSun),N),V),0.0),22.0)*.22;
+      vec3 col=mix(base,sky,fres*.72);
+      col+=uSunCol*(sunSpec*1.15+longSpec*.4);
+      col+=vec3(.07,.12,.14)*max(vHeight,0.0)*.08;
+      float dist=distance(cameraPosition,vWorld);
+      float haze=smoothstep(2600.0,9000.0,dist);
+      vec3 hazeCol=mix(uSkyH,uSkyZ,.38);
+      col=mix(col,hazeCol,haze*.82);
+      gl_FragColor=vec4(col,1.0);
+    }`
+});
+const water=new THREE.Mesh(wgeo,oceanMat); water.position.set(0,0,-3000); scene.add(water); water.frustumCulled=false; water.renderOrder=1;
+function updateWater(dt){ oceanU.uTime.value+=dt; }
 
 /* ---------------- dynamic sky (day / dawn / dusk cycle) ---------------- */
 const DAY={
@@ -327,10 +352,16 @@ function updateSky(dt){
   sun.intensity=a.inten+(b.inten-a.inten)*t;
   lerpColor(a.hemi,b.hemi,t,hemi.color);
   lerpColor(a.gnd,b.gnd,t,hemi.groundColor);
-  water.material.color.setHex(blendHex(a.water,b.water,t));
+  const waterHex=blendHex(a.water,b.water,t);
+  oceanU.uWater.value.setHex(waterHex);
+  oceanU.uDeep.value.setHex(blendHex(shade(a.water,.42),shade(b.water,.42),t));
+  oceanU.uSkyH.value.copy(scene.fog.color);
+  oceanU.uSkyZ.value.copy(scene.background);
   // sun position: rises ~06h, peaks 12h, sets ~18h, dips below horizon at night
   const sa=((h-6)/24)*Math.PI*2;
   sun.position.set(Math.cos(sa)*700, Math.max(-40,Math.sin(sa)*850), Math.sin(sa)*700);
+  oceanU.uSun.value.copy(sun.position).normalize();
+  oceanU.uSunCol.value.copy(sun.color);
 }
 function blendHex(a,b,t){
   const ar=(a>>16)&255,ag=(a>>8)&255,ab=a&255;
@@ -340,7 +371,7 @@ function blendHex(a,b,t){
 // gradient sky dome: zenith colour at the top, horizon colour at eye level, so
 // the fogged map melts into the exact same colour as the sky at the horizon.
 const skyU={uZenith:{value:new THREE.Color(0x4f86c4)},uHorizon:{value:new THREE.Color(0x9fc6ea)}};
-const skyDome=new THREE.Mesh(new THREE.SphereGeometry(9000,48,32),
+const skyDome=new THREE.Mesh(new THREE.SphereGeometry(12500,56,40),
   new THREE.ShaderMaterial({
     uniforms:skyU, side:THREE.BackSide, depthWrite:false, fog:false,
     vertexShader:`varying vec3 vPos;
@@ -417,13 +448,13 @@ function groundHeight(x,z){ return Math.max(CFG.minAlt, terrainHeight(x,z)-6); }
   const pos=geo.attributes.position;
   const col=new Float32Array(pos.count*3);
   const lerpCol=(a,b,t,c)=>{ const r=a.r+(b.r-a.r)*t, g=a.g+(b.g-a.g)*t, bl=a.b+(b.b-a.b)*t; c[0]=r;c[1]=g;c[2]=bl; };
-  const C_SAND={r:0.74,g:0.64,b:0.44}, C_SANDD={r:0.58,g:0.5,b:0.34},
-        C_GRASS={r:0.31,g:0.48,b:0.20}, C_FOREST={r:0.13,g:0.27,b:0.12},
-        C_HIGH={r:0.39,g:0.39,b:0.32};
+  const C_SAND={r:0.82,g:0.70,b:0.45}, C_SANDD={r:0.52,g:0.43,b:0.26},
+        C_GRASS={r:0.28,g:0.62,b:0.22}, C_FOREST={r:0.07,g:0.34,b:0.12},
+        C_HIGH={r:0.18,g:0.43,b:0.18};
   // patchy, varied greens: n (0..1) from slow value-noise shifts each colour
   // more toward a brighter or darker green so fields aren't a flat single tone
   const varyLand=(c,n)=>{
-    c[0]*=0.86+n*0.20; c[1]*=0.68+n*0.55; c[2]*=0.80+n*0.30;
+    c[0]*=0.80+n*0.22; c[1]*=0.78+n*0.50; c[2]*=0.72+n*0.34;
   };
   for(let i=0;i<pos.count;i++){
     const x=pos.getX(i), z=pos.getZ(i);
@@ -442,13 +473,39 @@ function groundHeight(x,z){ return Math.max(CFG.minAlt, terrainHeight(x,z)-6); }
       lerpCol(C_GRASS,C_FOREST,Math.min(1,(h0-46)/54),c); varyLand(c,n);
     } else {           // forest -> bare highland
       lerpCol(C_FOREST,C_HIGH,Math.min(1,(h0-100)/160),c);
-      const v=0.82+n*0.3; c[0]*=v; c[1]*=v; c[2]*=v*1.02;
+      const v=0.90+n*0.22; c[0]*=v; c[1]*=v*1.08; c[2]*=v*.92;
     }
   }
   geo.setAttribute('color',new THREE.BufferAttribute(col,3));
-  const land=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({vertexColors:true}));
+  const landMat=new THREE.MeshPhongMaterial({vertexColors:true,shininess:5,specular:0x243027,flatShading:false});
+  const land=new THREE.Mesh(geo,landMat);
   land.position.set(0,0,0);
+  land.receiveShadow=true;
   scene.add(land);
+
+  // --- terrain dressing: tree belts, farmland patches and coastal scrub ---
+  const detail=new THREE.Group(); detail.name='terrain-detail'; scene.add(detail);
+  const trunkGeo=new THREE.CylinderGeometry(1.15,1.65,14,6);
+  const crownGeo=new THREE.ConeGeometry(7.5,22,7);
+  const trunkMat=new THREE.MeshLambertMaterial({color:0x4b3a2c});
+  const crownMat=new THREE.MeshLambertMaterial({color:0x28552f});
+  const trunks=new THREE.InstancedMesh(trunkGeo,trunkMat,420);
+  const crowns=new THREE.InstancedMesh(crownGeo,crownMat,420);
+  trunks.castShadow=true; crowns.castShadow=true;
+  const im=new THREE.Matrix4(); let treeN=0, tries=0;
+  while(treeN<420 && tries<10000){
+    tries++; const x=rand(-3100,3100),z=rand(-3400,3000),h0=terrainHeight(x,z);
+    if(h0<28)continue;
+    // Keep clear of the central air-combat corridor.
+    if(Math.hypot(x,z)<260)continue;
+    const sc=rand(.62,1.35);
+    im.makeScale(sc,sc,sc); im.setPosition(x,h0+5*sc,z); trunks.setMatrixAt(treeN,im);
+    im.makeScale(sc,sc,sc); im.setPosition(x,h0+18*sc,z); crowns.setMatrixAt(treeN,im);
+    treeN++;
+  }
+  trunks.instanceMatrix.needsUpdate=true; crowns.instanceMatrix.needsUpdate=true; detail.add(trunks,crowns);
+
+  // Natural colour/noise variation and tree clusters provide terrain dressing.
 })();
 
 /* soft sprite clouds */
@@ -463,20 +520,85 @@ const cloudTex=(()=>{
   return new THREE.CanvasTexture(c);
 })();
 const clouds=[];
-for(let i=0;i<28;i++){
-  const g=new THREE.Group(); const n=7+Math.floor(Math.random()*4);
+for(let i=0;i<170;i++){
+  const g=new THREE.Group(); const n=10+Math.floor(Math.random()*14);
+  const high=i%3===0;
   for(let j=0;j<n;j++){
-    const m=new THREE.SpriteMaterial({map:cloudTex,transparent:true,opacity:rand(0.4,0.75),depthWrite:false});
-    const s=new THREE.Sprite(m); const sc=rand(60,130);
-    s.scale.set(sc,sc*rand(0.45,0.65),1);
-    s.position.set(rand(-55,55),rand(-14,18),rand(-55,55));
+    const m=new THREE.SpriteMaterial({map:cloudTex,transparent:true,opacity:rand(high?.16:.35,high?.34:.72),depthWrite:false});
+    const s=new THREE.Sprite(m); const sc=rand(high?160:125,high?360:300);
+    s.scale.set(sc,sc*rand(.42,.72),1);
+    s.position.set(rand(-160,160),rand(-38,38),rand(-160,160));
     g.add(s);
   }
-  g.position.set(rand(-800,900),rand(160,560),rand(1200,-4600));
+  g.position.set(rand(-9000,9000),rand(high?650:180,high?1450:760),rand(1800,-11000));
   scene.add(g);
-  clouds.push({pos:g.position,drift:rand(-2,2),baseY:g.position.y,bob:rand(0,6.28)});
+  clouds.push({pos:g.position,drift:rand(high?.6:1.2,high?1.8:3.4),baseY:g.position.y,bob:rand(0,6.28)});
 }
 function updateClouds(dt){ for(const c of clouds){ c.pos.x+=c.drift*dt; c.pos.y=c.baseY+Math.sin(G.time*0.1+c.bob)*4; } }
+
+/* =====================================================================
+   PACIFIC FLEET — destructible Allied PT boats and German E-boats
+===================================================================== */
+const boats=[];
+const BOAT_DATA=[
+  {id:'AP1',team:ALLIED,type:'PT BOAT',x:-1260,z:-920,rot:.25},
+  {id:'AP2',team:ALLIED,type:'PT BOAT',x:1480,z:720,rot:-1.05},
+  {id:'AP3',team:ALLIED,type:'PT BOAT',x:-620,z:1880,rot:.70},
+  {id:'GE1',team:LUFT,type:'E-BOAT',x:980,z:-1340,rot:2.2},
+  {id:'GE2',team:LUFT,type:'E-BOAT',x:2060,z:360,rot:-2.4},
+  {id:'GE3',team:LUFT,type:'E-BOAT',x:-1880,z:980,rot:.95},
+];
+function buildBoat(d){
+  const g=new THREE.Group(); const allied=d.team===ALLIED;
+  const hull=new THREE.Mesh(new THREE.BoxGeometry(allied?5.8:6.8,1.6,20),new THREE.MeshStandardMaterial({color:allied?0x3f4d4b:0x303a37,roughness:.8,metalness:.12})); hull.position.y=2; g.add(hull);
+  const bow=new THREE.Mesh(new THREE.ConeGeometry(allied?2.9:3.4,8,4),hull.material); bow.rotation.x=Math.PI/2; bow.position.set(0,2,allied?-13:-14); g.add(bow);
+  const deck=new THREE.Mesh(new THREE.BoxGeometry(allied?5.2:6.0,.45,10),new THREE.MeshStandardMaterial({color:allied?0x5d6b58:0x4a5149,roughness:.9})); deck.position.set(0,3,0); g.add(deck);
+  const cabin=new THREE.Mesh(new THREE.BoxGeometry(allied?2.8:3.6,2.2,4.2),new THREE.MeshStandardMaterial({color:allied?0xd5d0b2:0x596157,roughness:.8})); cabin.position.set(0,4.2,1); g.add(cabin);
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(allied?3.0:3.8,.25,4.3),new THREE.MeshStandardMaterial({color:allied?0x4d5b58:0x2b332f,roughness:.85})); roof.position.set(0,5.4,1); g.add(roof);
+  const stack=new THREE.Mesh(new THREE.CylinderGeometry(.55,.7,2.5,8),new THREE.MeshStandardMaterial({color:0x262b2a,roughness:.75,metalness:.3})); stack.position.set(0,4.8,5); g.add(stack);
+  // Distinct silhouettes: Allied PT gets twin forward guns; German E-boat gets aft superstructure + single flak mount.
+  const mount=new THREE.Group(); mount.position.set(0,5.2,allied?-5:6); g.add(mount);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(1.0,1.2,.5,10),new THREE.MeshStandardMaterial({color:0x282d2b})); mount.add(base);
+  const aa=new THREE.Group(); const barrel1=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,3.5,6),new THREE.MeshBasicMaterial({color:0x171b1a})); barrel1.rotation.x=Math.PI/2; barrel1.position.z=-1.2; aa.add(barrel1); if(!allied){const barrel2=barrel1.clone();barrel2.position.z=1.2;aa.add(barrel2);} mount.add(aa);
+  for(const sx of allied?[-1.8,1.8]:[-2.1,2.1]){const tor=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,4.5,7),new THREE.MeshStandardMaterial({color:allied?0x202625:0x202321,roughness:.7,metalness:.25}));tor.rotation.z=Math.PI/2;tor.position.set(sx,3.7,allied?-7:6);g.add(tor);}
+  const mark=new THREE.Mesh(new THREE.CircleGeometry(1.3,32),new THREE.MeshBasicMaterial({color:allied?0xc33a2d:0x22272a}));mark.rotation.x=-Math.PI/2;mark.position.set(0,3.45,-1);g.add(mark);
+  const hp=new THREE.Group(); const plate=new THREE.Mesh(new THREE.BoxGeometry(8,.15,.25),new THREE.MeshBasicMaterial({color:allied?0x4d9ed8:0xd85645})); plate.position.y=10; hp.add(plate); g.add(hp);
+  g.position.set(d.x,0,d.z); g.rotation.y=d.rot; g.userData.boatId=d.id;
+  scene.add(g); return {id:d.id,team:d.team,type:d.type,group:g,x:d.x,z:d.z,rot:d.rot,hp:100,alive:true,respawn:0,aaT:rand(.5,2)};
+}
+function initBoats(){ for(const d of BOAT_DATA)boats.push(buildBoat(d)); }
+function getBoat(id){ return boats.find(b=>b.id===id); }
+function boatHitTest(a,b){ const dx=a.x-b.x,dz=a.z-b.z; return dx*dx+dz*dz<190; }
+function reportBoatHit(id,dmg){ if(!me||!me.alive||G.state!=='play')return; if(G.isHost)hostApplyBoatHit(me.pid,id,dmg); else if(NET.hostConn&&NET.hostConn.open)NET.hostConn.send({t:'boathit',boat:id,d:dmg}); }
+function hostApplyBoatHit(kid,bid,dmg){
+  const k=G.players[kid], b=getBoat(bid); if(!k||!b||!b.alive||k.team===b.team)return;
+  b.hp-=dmg; if(b.hp>0){ broadcast({t:'boatfx',id:bid,hp:b.hp}); return; }
+  b.hp=0; b.alive=false; b.respawn=CFG.boatRespawn; b.group.visible=false; explosionAt(b.group.position.clone().add(new THREE.Vector3(0,4,0)),2.6);
+  const m={t:'boatkill',boat:bid,k:kid,score:CFG.boatScore}; broadcast(m); applyBoatKill(m);
+}
+function applyBoatKill(m){ const b=getBoat(m.boat); if(!b)return; const wasAlive=b.alive; b.hp=0;b.alive=false;b.respawn=CFG.boatRespawn;b.group.visible=false;if(wasAlive)explosionAt(b.group.position.clone().add(new THREE.Vector3(0,4,0)),2.4,true); const k=G.players[m.k]; if(k){k.score+=m.score||CFG.boatScore;if(k.pid===me.pid)msg('SHIP SUNK  +'+(m.score||CFG.boatScore),'#9fe7ff');} }
+function applyBoatState(list){ for(const s of list){const b=getBoat(s.id);if(!b)continue;b.x=s.x;b.z=s.z;b.rot=s.r;b.hp=s.h;b.alive=s.a;b.respawn=s.rs||0;b.group.position.set(b.x,0,b.z);b.group.rotation.y=b.rot;b.group.visible=b.alive;} }
+function updateBoats(dt){
+  for(const b of boats){
+    if(!b.alive){b.respawn-=dt;if(b.respawn<=0){b.alive=true;b.hp=100;b.group.visible=true;}continue;}
+    // Slow patrol gives the fleet life without interfering with aircraft handling.
+    b.x+=Math.cos(b.rot)*dt*2.4; b.z-=Math.sin(b.rot)*dt*2.4;
+    if(Math.abs(b.x)>2850||Math.abs(b.z)>3000)b.rot+=Math.PI*.72;
+    b.group.position.set(b.x,0,b.z); b.group.rotation.y=b.rot;
+    b.aaT-=dt; if(G.isHost&&b.aaT<=0){
+      const target=G.players[selectNearestEnemyBoatTarget(b)];
+      if(target&&target.alive&&target.pos.distanceTo(b.group.position)<900){
+        b.aaT=1.4+Math.random()*1.6;
+        const dir=target.pos.clone().sub(b.group.position).normalize();
+        broadcast({t:'boatAA',id:b.id,x:b.x,y:5,z:b.z,fx:dir.x,fy:dir.y,fz:dir.z});
+        onBoatAA({id:b.id,x:b.x,y:5,z:b.z,fx:dir.x,fy:dir.y,fz:dir.z});
+      }else b.aaT=.6;
+    }
+  }
+}
+function selectNearestEnemyBoatTarget(b){ let best=null,bd=1e12; for(const pid of G.order){const p=G.players[pid];if(!p||!p.alive||p.team===b.team)continue;const d=p.pos.distanceToSquared(b.group.position);if(d<bd){bd=d;best=pid;}} return best; }
+function onBoatAA(d){ const origin=new THREE.Vector3(d.x,d.y,d.z), dir=new THREE.Vector3(d.fx,d.fy,d.fz).normalize(); for(let i=0;i<6;i++)tracers.spawn(origin.clone().addScaledVector(dir,i*2.6),dir.clone().multiplyScalar(20),.22,1,.7,.15,0); }
+initBoats();
 
 /* ---------------- audio ---------------- */
 const SFX={
@@ -599,7 +721,7 @@ function explosionAt(pos,scale,quiet){
 /* ---------------- game state ---------------- */
 const G={
   time:0, menuT:0, shake:0, dmgFlash:0, hitmark:0, popups:[], msgs:[], slowT:0,
-  state:'menu',       // menu | lobby | play
+  state:'menu',       // menu | lobby | play | over
   isHost:false, myId:null, myPID:null,
   players:{},         // pid -> player object (includes me)
   order:[],           // array of pids
@@ -609,9 +731,8 @@ const G={
 let me=null;
 
 /* =====================================================================
-   PLANE BUILDER — biplane model (the classic fighter from our
-   "Biplane vs Zeppelin" game) tinted by team, with animated prop,
-   cockpit, wing guns, name plate.
+   PLANE BUILDER — WWII fighter aircraft with distinct silhouettes,
+   team markings, animated props, cockpit, guns, and tactical name plate.
 ===================================================================== */
 const propBlurTex=(()=>{
   const c=document.createElement('canvas'); c.width=c.height=64;
@@ -624,132 +745,94 @@ const propBlurTex=(()=>{
 
 function mat(color,opts){ opts=opts||{}; return new THREE.MeshLambertMaterial(Object.assign({color},opts)); }
 
-/* ---------------- paint schemes (player selectable) ---------------- */
-const PLANE_COLORS=[
-  0x4e9ad0,0x2e6db4,0x6fb54a,0x8a9a3a,0xc9b94a,0xe07a3a,0xd84a3a,0xb84a7a,
-  0x7a4ab8,0x3f9f8f,0x9a5a3a,0x555f6b,0x22252a,0xd8d8d0,0xffffff,0x1a1a22,
-];
-
-/* Everyone now flies the same biplane; colour is the only choice.
-   `ptype` is kept as a fixed placeholder so the multiplayer protocol
-   (which relays a plane type string) stays untouched. */
-let selPlaneType='biplane', selPlaneColor=PLANE_COLORS[0];
-function currentSelection(){ return {ptype:selPlaneType,pcolor:selPlaneColor}; }
-function setColor(c){ if(typeof c==='number')selPlaneColor=c; }
-
-function buildMenuPickers(){
-  const cp=document.getElementById('colorPicker');
-  if(!cp)return;
-  cp.innerHTML='';
-  const colSqs=[];
-  const sync=()=>{
-    for(let i=0;i<colSqs.length;i++){ colSqs[i].className='col-sq'+(PLANE_COLORS[i]===selPlaneColor?' on':''); }
-  };
-  const mkColor=(c)=>{
-    const d=document.createElement('div');
-    d.className='col-sq'+(c===selPlaneColor?' on':'');
-    d.style.background='#'+('000000'+c.toString(16)).slice(-6);
-    if(d.addEventListener)d.addEventListener('click',()=>{ setColor(c); sync(); });
-    colSqs.push(d); return d;
-  };
-  for(const c of PLANE_COLORS) if(cp.appendChild) cp.appendChild(mkColor(c));
-}
-
-/* Biplane fighter — nosed toward -Z (the game's forward), tail toward +Z.
-   Model taken from our "Biplane vs Zeppelin" game and tinted by the pilot's
-   chosen paint colour. `name` is drawn on a plate above the cockpit.
-   Returns {g,prop,guns,muzzle}. */
-function buildPlane(type,team,color,name){
-  if(color==null) color=team===ALLIED?0x4e9ad0:0x9a5a3a;
-  const body=color, wing=shade(color,0.62), dark=0x22252a;
-  const mb=mat(body), mw=mat(wing), mdk=mat(dark), mp=mat(0x5a4632);
+/* ---------------- aircraft assignment ---------------- */
+const PLANE_STATS={
+  mustang:{name:'P-51D MUSTANG',team:ALLIED,body:0x66716b,wing:0x4c5751,max:182,min:72,turn:2.15,gun:13,icon:'▰'},
+  spitfire:{name:'SPITFIRE Mk IX',team:ALLIED,body:0x4f6258,wing:0x394a42,max:174,min:68,turn:2.32,gun:12,icon:'✦'},
+  bf109:{name:'Bf 109G',team:LUFT,body:0x6f7867,wing:0x515a4b,max:178,min:70,turn:2.28,gun:13,icon:'◆'},
+  fw190:{name:'Fw 190A',team:LUFT,body:0x626a61,wing:0x464d46,max:170,min:70,turn:2.05,gun:14,icon:'✥'}
+};
+const TEAM_PLANES={A:['mustang','spitfire'],L:['bf109','fw190']};
+function aircraftForTeam(team, seed){ const a=TEAM_PLANES[team]||TEAM_PLANES.A; return a[Math.abs(seed||0)%a.length]; }
+function planeAllowed(type,team){return !!PLANE_STATS[type]&&PLANE_STATS[type].team===team;}
+function defaultPlaneForTeam(team){return aircraftForTeam(team,0);}
+function mat(color,opts){opts=opts||{};return new THREE.MeshStandardMaterial(Object.assign({color,roughness:.72,metalness:.18},opts));}
+function crossDecal(team){
   const g=new THREE.Group();
-  const add=(geo,mm,x,y,z,rx,ry,rz)=>{ const m=new THREE.Mesh(geo,mm); m.position.set(x,y,z);
-    if(rx!=null)m.rotation.set(rx||0,ry||0,rz||0); g.add(m); return m; };
-
-  /* ---- FUSELAGE (biplane proportions from biplanecrazy) ---- */
-  add(new THREE.BoxGeometry(1.3,1.4,6.4),mb,0,0,0.3);        // main body
-  add(new THREE.BoxGeometry(0.9,0.9,1.6),mb,0,0.1,-3.2);     // nose taper
-  add(new THREE.BoxGeometry(0.7,0.7,1.4),mdk,0,-0.6,3.2);    // tail skid
-
-  /* ---- BIPLANE WINGS (upper + lower, strut braced) ---- */
-  add(new THREE.BoxGeometry(10.5,0.18,2.1),mw,0,1.35,0.2);   // upper wing
-  add(new THREE.BoxGeometry(9,0.18,1.9),mw,0,-0.7,0.4);      // lower wing
-  add(new THREE.BoxGeometry(0.2,2.2,0.2),mw,3.4,0.35,0.3);   // port strut
-  add(new THREE.BoxGeometry(0.2,2.2,0.2),mw,-3.4,0.35,0.3);  // starboard strut
-  add(new THREE.BoxGeometry(0.2,1.9,0.2),mw,4.8,0.0,0.35);   // outer port strut
-  add(new THREE.BoxGeometry(0.2,1.9,0.2),mw,-4.8,0.0,0.35);  // outer starboard strut
-  // tail surfaces
-  add(new THREE.BoxGeometry(4.4,0.16,1.5),mw,0,0.25,3.1);    // tailplane
-  add(new THREE.BoxGeometry(0.16,1.7,1.3),mw,0,1.05,3.3);    // fin
-
-  /* ---- COCKPIT / pilot ---- */
-  add(new THREE.BoxGeometry(0.9,0.7,1.2),mdk,0,0.95,0.6);
-  add(new THREE.SphereGeometry(0.34,10,8),mat(0x2e2a28),0,0.72,0.5).scale.set(1,0.6,1.1);
-
-  /* ---- MACHINE GUNS (two fuselage cowl guns) with muzzle-flash nodes ---- */
-  const guns=[];
-  const addGun=(x,y,z)=>{
-    const g2=new THREE.Group();
-    const barrel=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,1.2,6),mdk);
-    barrel.rotation.x=-Math.PI/2; barrel.position.set(0,0,-0.5); g2.add(barrel);
-    const muzzle=new THREE.Mesh(new THREE.SphereGeometry(0.5,6,6),
-      new THREE.MeshBasicMaterial({color:0xffe08a,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
-    muzzle.position.set(0,0,-0.9); g2.add(muzzle);
-    g2.position.set(x,y,z); g.add(g2);
-    guns.push({flash:muzzle,g2});
-    return g2;
-  };
-  addGun(0.45,0.15,-3.1); addGun(-0.45,0.15,-3.1);
-  addGun(0,0.15,-3.5);
-
-  /* ---- 2-BLADE PROPELLER (nose, -Z) with blur disc ---- */
-  const prop=new THREE.Group(); prop.position.set(0,0.1,-4.2);
-  const bl=new THREE.Mesh(new THREE.BoxGeometry(0.35,4.8,0.12),mp); prop.add(bl);
-  const bl2=new THREE.Mesh(new THREE.BoxGeometry(4.8,0.35,0.12),mp); prop.add(bl2);
-  const blur=new THREE.Mesh(new THREE.PlaneGeometry(5.2,5.4),
-    new THREE.MeshBasicMaterial({map:propBlurTex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));
-  prop.add(blur);
-  g.add(prop);
-
-  /* ---- NAME PLATE — high-contrast label above the cockpit ---- */
-  const cnv=document.createElement('canvas'); cnv.width=cnv.height=128;
-  const cx=cnv.getContext('2d');
-  const lab=(name||'???');
-  const bw=124, bh=46, bx=(128-bw)/2, by=(128-bh)/2, r=10;
-  cx.beginPath();
-  cx.moveTo(bx+r,by); cx.arcTo(bx+bw,by,bx+bw,by+bh,r); cx.arcTo(bx+bw,by+bh,bx,by+bh,r);
-  cx.arcTo(bx,by+bh,bx,by,r); cx.arcTo(bx,by,bx+bw,by,r); cx.closePath();
-  cx.fillStyle='rgba(8,12,18,0.72)'; cx.fill();
-  const tcol=team===ALLIED?'#4e9ad0':'#d84a3a';  // team blue/red — id is always this colour
-  cx.lineWidth=4; cx.strokeStyle=tcol; cx.stroke();
-  // team symbol to the left of the id: allied star or luftwaffe cross
-  cx.save();
-  cx.translate(27,64);
-  if(team===ALLIED){
-    cx.rotate(-Math.PI/2);
-    cx.beginPath();
-    for(let i=0;i<5;i++){
-      const a=-Math.PI/2+(i*4*Math.PI/5), r=11;
-      const x=Math.cos(a)*r, y=Math.sin(a)*r;
-      if(i===0)cx.moveTo(x,y); else cx.lineTo(x,y);
-    }
-    cx.closePath();
-    cx.fillStyle='#ffffff'; cx.fill();
-    cx.lineWidth=2; cx.strokeStyle='rgba(0,0,0,0.85)'; cx.stroke();
-  }else{
-    cx.fillStyle='#ffffff'; cx.fillRect(-2.6,-8,5.2,16);
-    cx.fillRect(-8,-2.6,16,5.2);
-    cx.lineWidth=3.5; cx.strokeStyle='#ffffff'; cx.strokeRect(-8,-8,16,16);
+  if(team===ALLIED){ const outer=new THREE.Mesh(new THREE.RingGeometry(1.05,1.42,40),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide})); const inner=new THREE.Mesh(new THREE.CircleGeometry(1.0,40),new THREE.MeshBasicMaterial({color:0xb52c2c,side:THREE.DoubleSide})); g.add(outer,inner); }
+  else { const a=new THREE.Mesh(new THREE.BoxGeometry(2.5,.22,.55),new THREE.MeshBasicMaterial({color:0xf1f3eb})); const b=new THREE.Mesh(new THREE.BoxGeometry(.55,.22,2.5),new THREE.MeshBasicMaterial({color:0xf1f3eb})); const ai=new THREE.Mesh(new THREE.BoxGeometry(1.55,.25,.28),new THREE.MeshBasicMaterial({color:0x20252a})); const bi=new THREE.Mesh(new THREE.BoxGeometry(.28,.25,1.55),new THREE.MeshBasicMaterial({color:0x20252a})); g.add(a,b,ai,bi); }
+  return g;
+}
+function addAircraftDetail(g,type,matBody,matDark,matGlass,matAccent,add){
+  if(type==='mustang'){
+    add(new THREE.BoxGeometry(7.8,.16,2.15),matBody,0,-.03,.65);
+    add(new THREE.BoxGeometry(4.2,.14,1.55),matBody,0,.02,2.2);
+    add(new THREE.CylinderGeometry(.55,.62,1.2,12),matDark,0,0,-4.28,Math.PI/2);
+    add(new THREE.BoxGeometry(2.0,.18,.18),matAccent,0,.16,-2.85);
+  } else if(type==='spitfire'){
+    add(new THREE.BoxGeometry(10.3,.18,1.9),matBody,0,.10,.25);
+    add(new THREE.BoxGeometry(5.4,.16,1.45),matBody,0,.02,1.45);
+    add(new THREE.CylinderGeometry(.62,.72,1.1,14),matAccent,0,0,-4.14,Math.PI/2);
+    add(new THREE.BoxGeometry(2.7,.12,.20),matAccent,0,.16,-2.5);
+  } else if(type==='bf109'){
+    add(new THREE.BoxGeometry(9.0,.22,1.9),matBody,0,.12,.3);
+    add(new THREE.BoxGeometry(4.9,.16,1.35),matBody,0,.03,1.6);
+    add(new THREE.CylinderGeometry(.42,.62,1.05,10),matAccent,0,0,-4.22,Math.PI/2);
+    add(new THREE.BoxGeometry(2.4,.12,.18),matAccent,0,.17,-2.55);
+  } else {
+    add(new THREE.BoxGeometry(8.2,.24,2.3),matBody,0,.12,.35);
+    add(new THREE.BoxGeometry(4.6,.18,1.55),matBody,0,.03,1.65);
+    add(new THREE.CylinderGeometry(.82,.72,1.1,14),matDark,0,0,-4.15,Math.PI/2);
+    add(new THREE.BoxGeometry(2.5,.12,.18),matAccent,0,.17,-2.45);
   }
-  cx.restore();
-  cx.font='bold 30px Impact,sans-serif'; cx.textAlign='center'; cx.textBaseline='middle';
-  cx.lineWidth=5; cx.strokeStyle='rgba(0,0,0,0.85)'; cx.strokeText(lab,64,64);  // outline
-  cx.fillStyle=tcol; cx.fillText(lab,64,64);
+}
+function buildPlane(type,team,color,name){
+  if(!planeAllowed(type,team))type=defaultPlaneForTeam(team); const st=PLANE_STATS[type];
+  const body=st.body,wing=st.wing,dark=0x20262a,glass=0x192b34,yellow=(color!=null&&color!==undefined?color:0xe1b84a);
+  const mb=mat(body),mw=mat(wing),mdk=mat(dark),mg=mat(glass,{roughness:.28,metalness:.35}),gold=mat(yellow); const g=new THREE.Group();
+  const add=(geo,mm,x,y,z,rx,ry,rz)=>{const m=new THREE.Mesh(geo,mm);m.position.set(x,y,z);if(rx!=null)m.rotation.set(rx||0,ry||0,rz||0);g.add(m);return m;};
+  const fus=new THREE.Mesh(new THREE.CylinderGeometry(.72,.72,5.6,12,1,false),mb);fus.rotation.x=Math.PI/2;g.add(fus);
+  add(new THREE.SphereGeometry(.72,12,8),mb,0,0,-2.8);
+  add(new THREE.SphereGeometry(.72,12,8),mb,0,0,2.8);
+  add(new THREE.ConeGeometry(.62,2.1,10),mb,0,0,-3.75,Math.PI/2);
+  // Primary wing silhouettes deliberately differ by aircraft.
+  if(type==='mustang'){
+    add(new THREE.BoxGeometry(11.2,.20,1.85),mw,0,.18,.25);
+    add(new THREE.BoxGeometry(7.0,.16,1.25),mw,0,.05,1.55);
+    add(new THREE.BoxGeometry(.24,1.55,1.18),mw,3.25,.45,.4); add(new THREE.BoxGeometry(.24,1.55,1.18),mw,-3.25,.45,.4);
+  }else if(type==='spitfire'){
+    add(new THREE.BoxGeometry(10.8,.20,2.0),mw,0,.22,.10);
+    add(new THREE.BoxGeometry(6.4,.16,1.45),mw,0,.04,1.45);
+  }else if(type==='bf109'){
+    add(new THREE.BoxGeometry(9.2,.22,1.85),mw,0,.15,.25);
+    add(new THREE.BoxGeometry(5.9,.16,1.20),mw,0,.02,1.45);
+    add(new THREE.BoxGeometry(.20,1.75,1.16),mw,2.65,.42,.35); add(new THREE.BoxGeometry(.20,1.75,1.16),mw,-2.65,.42,.35);
+  }else{
+    add(new THREE.BoxGeometry(9.5,.24,2.25),mw,0,.12,.25);
+    add(new THREE.BoxGeometry(6.0,.18,1.48),mw,0,.01,1.55);
+  }
+  add(new THREE.BoxGeometry(3.2,.18,.9),mw,0,.18,2.9);
+  add(new THREE.BoxGeometry(.18,1.9,1.3),mw,0,1.0,3.0);
+  addAircraftDetail(g,type,mb,mdk,mg,gold,add);
+  add(new THREE.SphereGeometry(.68,16,10),mg,0,.78,.55); add(new THREE.SphereGeometry(.33,12,8),mat(0x303336),0,.92,.55); add(new THREE.BoxGeometry(.32,.32,1.2),mdk,0,-.45,3.85);
+  const prop=new THREE.Group();prop.position.set(0,0,-4.62);for(let i=0;i<3;i++){const blade=new THREE.Mesh(new THREE.BoxGeometry(.18,4.1,.12),mat(i===0?0x252729:0x41464a));blade.rotation.z=i*Math.PI/3;prop.add(blade);}const spinner=add(new THREE.SphereGeometry(.27,10,8),gold,0,0,-4.55);prop.add(spinner);g.add(prop);
+  const guns=[];const gunCount=(type==='mustang'||type==='fw190')?6:4;for(let i=0;i<gunCount;i++){const x=((i-(gunCount-1)/2)/((gunCount-1)/2))*1.35;const gp=new THREE.Group();const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.075,.075,1.55,6),mdk);barrel.rotation.x=-Math.PI/2;barrel.position.z=-.72;gp.add(barrel);gp.position.set(x*.6,.08,-3.2);const flash=new THREE.Mesh(new THREE.SphereGeometry(.34,6,6),new THREE.MeshBasicMaterial({color:0xffdb86,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));flash.position.z=-1.2;gp.add(flash);g.add(gp);guns.push({g2:gp,flash});}
+  const mark=crossDecal(team);mark.rotation.x=-Math.PI/2;mark.position.set(0,.75,.35);mark.scale.setScalar(.52);g.add(mark);
+  for(const x of [-5,5]){const lamp=new THREE.Mesh(new THREE.SphereGeometry(.18,8,8),new THREE.MeshBasicMaterial({color:team===ALLIED?0x4c9bd7:0xe15a45}));lamp.position.set(x,.02,.25);g.add(lamp);}
+  // Large, simple callsign tag. Team is communicated only by colour:
+  // BLUE = Allies, RED = Luftwaffe. No team/aircraft words clutter the tag.
+  const cnv=document.createElement('canvas');cnv.width=480;cnv.height=110;const cx=cnv.getContext('2d');
+  const tcol=team===ALLIED?'#62b4ee':'#ff5f52';
+  cx.clearRect(0,0,cnv.width,cnv.height);
+  cx.font='900 52px Impact,Arial Black,sans-serif';
+  cx.textAlign='center'; cx.textBaseline='middle';
+  cx.lineWidth=12; cx.strokeStyle='rgba(2,8,12,.92)';
+  cx.strokeText((name||'PILOT').slice(0,14).toUpperCase(),240,55);
+  cx.fillStyle=tcol;
+  cx.fillText((name||'PILOT').slice(0,14).toUpperCase(),240,55);
   const nm=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cnv),transparent:true,depthWrite:false}));
-  nm.scale.set(6.8,6.8,1); nm.position.y=-4.0; nm.position.z=0.4; g.add(nm);
-
-  return {g,prop,guns,muzzle:()=>{for(const gn of guns)gn.flash.material.opacity=1;}};
+  nm.scale.set(9.6,2.2,1); nm.position.set(0,-4.85,.3); nm.visible=false; g.add(nm);
+  return {g,prop,guns,muzzle:()=>{for(const gn of guns)gn.flash.material.opacity=1;},type,nameSprite:nm};
 }
 function shade(c,f){
   const r=Math.floor(((c>>16)&255)*f), g=Math.floor(((c>>8)&255)*f), b=Math.floor((c&255)*f);
@@ -765,17 +848,19 @@ function makePlayer(pid){
     pos:new THREE.Vector3(rand(-300,300),rand(200,360),rand(-300,300)),
     quat:new THREE.Quaternion(), fwd:new THREE.Vector3(0,0,-1),
     up:new THREE.Vector3(0,1,0), right:new THREE.Vector3(1,0,0),
-    speed:70, thr:0.6, bank:0, hp:100, alive:true, deadT:0,
-    score:0, kills:0, deaths:0, ready:false,
+    speed:70, thr:0.6, bank:0, hp:100, alive:true, deadT:0, ammo:Infinity, heat:0, overheated:false,
+    score:0, kills:0, deaths:0, streak:0, streakT:0, ready:!!pid.isBot, isBot:!!pid.isBot, botCooldown:rand(.4,1.4), boatCooldown:0,
     // local-only
     mesh:null, prop:null, smokeT:0, dyingT:0, gannen:false,
     // plane appearance (chosen / relayed)
-    ptype:pid.ptype||'spitfire', pcolor:(pid.pcolor!=null?pid.pcolor:(pid.team===ALLIED?0x4e9ad0:0x7a4a3a)),
+    ptype:(pid.ptype&&planeAllowed(pid.ptype,pid.team||ALLIED))?pid.ptype:defaultPlaneForTeam(pid.team||ALLIED), pcolor:(pid.pcolor!=null?pid.pcolor:null),
     // interpolation targets (remote)
     on:false, tPos:new THREE.Vector3(), tQuat:new THREE.Quaternion(),
   };
+  if(!planeAllowed(p.ptype,p.team||ALLIED))p.ptype=defaultPlaneForTeam(p.team||ALLIED);
+  p.maxSpeed=PLANE_STATS[p.ptype].max;p.minSpeed=PLANE_STATS[p.ptype].min;p.turnRate=PLANE_STATS[p.ptype].turn;p.gunRate=PLANE_STATS[p.ptype].gun;
   const b=buildPlane(p.ptype,p.team||ALLIED,p.pcolor,p.name);
-  p.mesh=b.g; p.prop=b.prop; p.guns=b.guns; p.flash=b.muzzle;
+  p.mesh=b.g; p.prop=b.prop; p.guns=b.guns; p.flash=b.muzzle; p.nameSprite=b.nameSprite;
   p.mesh.visible=false; scene.add(p.mesh);
   return p;
 }
@@ -807,6 +892,8 @@ function updateBullets(dt){
     b.mesh.position.copy(b.pos);
     let dist=b.pos.distanceTo(me.pos); if(dist<b.near)b.near=dist;
     let kill=b.life<=0||b.pos.y<=groundHeight(b.pos.x,b.pos.z);
+    // Destructible boats: aircraft guns can sink enemy vessels.
+    if(!kill&&me.alive&&b.team===me.team){ for(const boat of boats){ if(!boat.alive||boat.team===me.team)continue; if(boatHitTest(b.pos,boat)){ kill=true; b.hit=true; reportBoatHit(boat.id,CFG.boatDmg); sparks.spawn(b.pos,_v3.set(rand(-14,14),rand(-8,8),rand(-14,14)),0.25,1,.7,.25,0); break; } } }
     // Swept (segment) collision so fast bullets can't tunnel through a target.
     // Enemy bullets damage me; death is still host-authoritative.
     if(!kill&&me.alive&&b.team!==me.team &&
@@ -856,8 +943,9 @@ let meLastSend=0, interpLastSend=0;
 function initMyFlight(){
   me.pos.set(rand(-200,200),rand(240,360),rand(-200,200));
   me.quat.identity(); me.fwd.set(0,0,-1); me.up.set(0,1,0); me.right.set(1,0,0);
-  me.speed=70; me.thr=0.6; me.hp=100; me.alive=true; me.deadT=0; me.bank=0;
+  me.speed=70; me.thr=0.6; me.hp=100; me.alive=true; me.deadT=0; me.bank=0; me.streak=0; me.streakT=0;
   me.mesh.visible=true; aim.x=0; aim.y=0;
+  if(me.nameSprite){ me.nameSprite.visible=true; me.nameSprite.scale.set(9.6,2.2,1); me.nameSprite.position.set(0,-4.65,0.3); }
 }
 
 function updateMyFlight(dt){
@@ -868,7 +956,7 @@ function updateMyFlight(dt){
   let sy=aim.y+((keys.ArrowUp)?1:0)-((keys.ArrowDown)?1:0);
   sx=clamp(sx,-1,1); sy=clamp(sy,-1,1);
   aim.x*=Math.exp(-dt*1.5); aim.y*=Math.exp(-dt*1.5);
-  const rate=CFG.turnRate;
+  const rate=me.turnRate||CFG.turnRate;
   _q.setFromAxisAngle(UP,-sx*rate*dt); me.quat.premultiply(_q);
   _q.setFromAxisAngle(XA,sy*rate*0.75*dt); me.quat.multiply(_q);
   me.quat.normalize();
@@ -876,7 +964,7 @@ function updateMyFlight(dt){
   me.fwd.set(0,0,-1).applyQuaternion(me.quat);
   me.up.set(0,1,0).applyQuaternion(me.quat);
   me.right.set(1,0,0).applyQuaternion(me.quat);
-  const tgt=CFG.minSpeed+(CFG.maxSpeed-CFG.minSpeed)*me.thr;
+  const minS=me.minSpeed||CFG.minSpeed,maxS=me.maxSpeed||CFG.maxSpeed;const tgt=minS+(maxS-minS)*me.thr;
   me.speed+=(tgt-me.speed)*Math.min(1,dt*1.2);
   me.pos.addScaledVector(me.fwd,me.speed*dt);
   if(me.pos.y>1500)me.pos.y=1500;
@@ -886,11 +974,23 @@ function updateMyFlight(dt){
   // keep inside world
   if(me.pos.length()>CFG.worldR){ me.pos.setLength(CFG.worldR); }
 
+  // combat streak decays after a quiet spell; rewards aggressive but controlled play
+  me.streakT-=dt; if(me.streakT<=0)me.streak=0;
+  if(me.pos.y-groundHeight(me.pos.x,me.pos.z)<42 && me.fwd.y<-.18 && Math.random()<dt*1.8){ msg('PULL UP','#f3c85f'); SFX.whoosh(); }
+
   // guns
   myCool-=dt;
-  if(fireInput&&myCool<=0){
-    myCool=1/CFG.gunRate; fireGuns();
+  if(me.overheated){
+    me.heat=Math.max(0,me.heat-dt*0.72);
+    if(me.heat<=0.18){me.overheated=false;msg('GUNS COOLED','#83d18b');}
+  }else{
+    me.heat=Math.max(0,me.heat-dt*0.34);
+    if(fireInput&&myCool<=0&&me.heat<0.985){
+      myCool=1/(me.gunRate||CFG.gunRate); me.heat=Math.min(1,me.heat+.078); fireGuns();
+      if(me.heat>=0.985){me.overheated=true;msg('GUNS OVERHEATED — CEASE FIRE','#ff7a5a');SFX.thud();}
+    }
   }
+  if(!me.overheated&&me.heat>=.90&&Math.random()<dt*1.5)msg('GUNS HOT','#ffb067');
   // damage smoke / fire
   me.smokeT-=dt;
   if(me.hp<55&&me.smokeT<=0){
@@ -914,6 +1014,7 @@ function updateMyFlight(dt){
   // visuals
   me.mesh.position.copy(me.pos);
   me.mesh.quaternion.copy(me.quat);
+  if(me.nameSprite)me.nameSprite.visible=true;
   _q.setFromAxisAngle(ZA,-me.bank); me.mesh.quaternion.multiply(_q);
   me.prop.rotation.z+=me.speed*dt*1.6;
 }
@@ -952,11 +1053,15 @@ function killMe(byTeamOrCause){
   me.alive=false; me.deadT=0;
   if(byTeamOrCause==='crashed')me.deaths++;
   explosionAt(me.pos,2.2); me.mesh.visible=false;
-  G.outPending=2.2; killMsg=byTeamOrCause;
-  sendDeath(byTeamOrCause);
+  if(G.state==='play'&&!G.winner)G.outPending=2.2;
+  killMsg=byTeamOrCause;
+  if(G.isHost){ checkWin(); } else { sendDeath(byTeamOrCause); }
 }
 let killMsg=null;
 function respawn(){
+  // A player may respawn during an active round, but never after the round has ended.
+  if(!me||G.state!=='play'||G.winner)return;
+  me.ammo=Infinity;me.heat=0;me.overheated=false;
   initMyFlight();
   hide('out');
   outShown=false;
@@ -981,12 +1086,11 @@ const CODE_CHARS='ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
 function hostRoom(){
   SFX.init();
   const myName=document.getElementById('hostName').value.trim()||('Pilot'+Math.floor(Math.random()*900+100));
-  const sel=currentSelection();
   const gameId=genCode(5);
   NET.myGameId=gameId;
   const pid=genPID();
   G.isHost=true; G.myId=pid; G.myPID=pid;
-  me=makePlayer({name:myName,team:ALLIED,ptype:sel.ptype,pcolor:sel.pcolor}); me.pid=pid;
+  me=makePlayer({name:myName,team:ALLIED}); me.pid=pid;
   G.players[pid]=me; G.order=[pid];
   assignTeams();
   initMyFlight();
@@ -994,7 +1098,7 @@ function hostRoom(){
   NET.peer=peer;
   peer.on('open',()=>{
     NET.log('HOST room "'+gameId+'" open');
-    G.myId=gameId;
+    G.myId=pid;
     showLobby();
   });
   peer.on('connection',conn=>{
@@ -1013,10 +1117,9 @@ function joinRoom(){
   const code=document.getElementById('joinCode').value.trim().toUpperCase();
   if(!code){ alert('Enter the room code'); return; }
   const myName=document.getElementById('joinName').value.trim()||('Pilot'+Math.floor(Math.random()*900+100));
-  const sel=currentSelection();
   const pid=genPID();
   G.isHost=false; G.myId=pid; G.myPID=pid;
-  me=makePlayer({name:myName,team:ALLIED,ptype:sel.ptype,pcolor:sel.pcolor}); me.pid=pid;
+  me=makePlayer({name:myName,team:ALLIED}); me.pid=pid;
   G.players[pid]=me; G.order=[pid];
   const peer=new Peer(undefined,{ debug:0 });
   NET.peer=peer;
@@ -1029,7 +1132,7 @@ function joinRoom(){
       conn.on('close',()=>{ NET.log('disconnected from host'); leaveLocal(); });
       conn.on('error',()=>{ NET.log('conn error'); });
       // request to join
-      conn.send({t:'join',name:myName,pid,pt:sel.ptype,pc:sel.pcolor});
+      conn.send({t:'join',name:myName,pid});
       me.name=myName;
       document.getElementById('joinCode').value='';
     });
@@ -1039,7 +1142,7 @@ function joinRoom(){
 
 function hostDrop(conn){
   const pid=conn.pid;
-  if(pid&&G.players[pid]){ removePlayer(pid); }
+  if(pid&&G.players[pid]){ broadcast({t:'leave',pid},pid); removePlayer(pid); }
   NET.conns.delete(pid);
   const who=pid||conn.peer;
   NET.log('player left: '+who);
@@ -1052,7 +1155,8 @@ function genCode(n){ let s=''; for(let i=0;i<n;i++)s+=CODE_CHARS[Math.floor(Math
 function handleClientData(conn,d){
   if(!d||typeof d!=='object')return;
   if(d.t==='join'){
-    if(Object.keys(G.players).length>=CFG.maxPlayers){ try{conn.send({t:'full'});}catch(e){} return; }
+    if(humanCount()>=CFG.maxPlayers){ try{conn.send({t:'full'});}catch(e){} return; }
+    if(botCount()>0)removeOneBot();
     const pid=d.pid; conn.pid=pid; NET.conns.set(pid,conn);
     const p=makePlayer({name:d.name,team:ALLIED,ptype:d.pt,pc:d.pc}); p.pid=pid;
     G.players[pid]=p; G.order.push(pid);
@@ -1064,10 +1168,22 @@ function handleClientData(conn,d){
     broadcast({t:'join',player:packOne(p)},pid);
     return;
   }
-  if(d.t==='state'){ onRemoteState(conn.pid,d); return; }
-  if(d.t==='shot'){ onRemoteShot(conn.pid,d); return; }
+  if(d.t==='state'){ if(G.players[conn.pid]&&!G.players[conn.pid].isBot)onRemoteState(conn.pid,d); return; }
+  if(d.t==='shot'){ if(G.players[conn.pid]&&!G.players[conn.pid].isBot){ onRemoteShot(conn.pid,d); } return; }
   if(d.t==='hit'){ hostApplyHit(conn.pid,d.target||d.t,d.d); return; }
-  if(d.t==='death'){ return; } // superseded by authoritative system
+  if(d.t==='boathit'){ hostApplyBoatHit(conn.pid,d.boat,d.d); return; }
+  if(d.t==='death'){
+    // A crash is a genuine aircraft loss, so it must be applied by the host too.
+    const p=G.players[conn.pid];
+    if(p&&p.alive){
+      p.alive=false; p.hp=0; p.deadT=0;
+      const deadMsg={t:'dead',p:conn.pid,k:null,c:d.c||'crashed'};
+      broadcast(deadMsg);
+      applyDead(deadMsg);
+      checkWin();
+    }
+    return;
+  }
   if(d.t==='ready'){ if(!G.locked&&G.players[conn.pid]){ G.players[conn.pid].ready=d.v; broadcast({t:'readyup',pid:conn.pid,r:d.v}); checkAllReady(); } return; }
 }
 function checkAllReady(){
@@ -1075,6 +1191,7 @@ function checkAllReady(){
   if(allReady&&!G.locked){ lockAndStart(); }
 }
 function lockAndStart(){
+  if(G.isHost)maintainBots();
   G.locked=true;
   assignTeams();
   broadcast({t:'roster',players:packPlayers()});
@@ -1124,7 +1241,7 @@ function packOne(p){
     pt:p.ptype, pc:p.pcolor,
     x:p.pos.x,y:p.pos.y,z:p.pos.z,qx:p.quat.x,qy:p.quat.y,qz:p.quat.z,qw:p.quat.w,
     s:p.speed,t:p.thr,h:p.hp,a:p.alive,b:p.bank,dt:p.deadT,
-    sc:p.score,k:p.kills,de:p.deaths};
+    sc:p.score,k:p.kills,de:p.deaths,st:p.streak,bot:!!p.isBot};
 }
 
 /* ---------- host: periodic aggregate state ---------- */
@@ -1137,6 +1254,8 @@ function hostSendTick(dt){
     if(!G.players[pid])continue;
     try{ conn.send({t:'state',list:packOthers(pid)}); }catch(e){}
   }
+  const blist=boats.map(b=>({id:b.id,x:b.x,z:b.z,r:b.rot,h:b.hp,a:b.alive,rs:b.respawn}));
+  for(const [,conn] of NET.conns){ try{conn.send({t:'boatstate',list:blist});}catch(e){} }
 }
 function packOthers(selfPid){
   const arr=[];
@@ -1155,8 +1274,8 @@ function handleHostData(d){
     const keepMe=me; keepMe.pid=d.you; keepMe.name=keepMe.name||('Pilot'+d.you);
     const selfInfo=d.players.find(p=>p.pid===d.you);
     if(selfInfo){
-      const newType=selfInfo.pt||keepMe.ptype||'spitfire';
-      const newCol=selfInfo.pc!=null?selfInfo.pc:(selfInfo.team===ALLIED?0x4e9ad0:0x7a4a3a);
+      const newType=planeAllowed(selfInfo.pt,selfInfo.team)?selfInfo.pt:defaultPlaneForTeam(selfInfo.team);
+      const newCol=selfInfo.pc!=null?selfInfo.pc:null;
       keepMe.ptype=newType; keepMe.pcolor=newCol;
       if(selfInfo.team!==keepMe.team||keepMe.mesh===null){ rebuildSkinFor(keepMe,selfInfo.team); }
       else{ keepMe.team=selfInfo.team; }
@@ -1176,7 +1295,7 @@ function handleHostData(d){
   if(d.t==='full'){ alert('Room is full (30/30)'); return; }
   if(d.t==='join'&&d.player){
     if(G.players[d.player.pid])return;
-    const p=makePlayer({name:d.player.name,team:d.player.team,ptype:d.player.pt,pc:d.player.pc}); p.pid=d.player.pid;
+    const p=makePlayer({name:d.player.name,team:d.player.team,ptype:d.player.pt,pc:d.player.pc,isBot:!!d.player.bot}); p.pid=d.player.pid; p.isBot=!!d.player.bot;
     G.players[d.player.pid]=p; G.order.push(d.player.pid);
     NET.log('new join: '+d.player.name);
     if(G.state==='lobby')refreshLobbyTable();
@@ -1198,9 +1317,34 @@ function handleHostData(d){
   if(d.t==='award'){ applyAward(d); return; }
   if(d.t==='dead'){ applyDead(d); return; }
   if(d.t==='matchover'&&d.winner){ matchOver(d.winner); return; }
+  if(d.t==='resetround'&&d.players){
+    G.winner=null; G.locked=false; G.state='lobby';
+    for(const s of d.players){
+      const p=G.players[s.pid]; if(!p)continue;
+      p.team=s.team; p.ptype=s.pt||p.ptype; p.pcolor=s.pc; p.ready=false; p.hp=100; p.alive=true; p.kills=0; p.deaths=0; p.score=0; p.streak=0; p.isBot=!!s.bot;
+      rebuildSkinFor(p,p.team);
+      if(p.pid===me.pid)initMyFlight(); else if(p.isBot)initBotFlight(p);
+    }
+    $('win').classList.remove('show'); $('out').classList.remove('show'); showLobby();
+    return;
+  }
   if(d.t==='hitfx'){ if(me&&me.alive){ G.shake+=0.4; G.dmgFlash=0.35; SFX.hit(); } return; }
   if(d.t==='hp'){ if(me&&me.alive){ me.hp=Math.max(0,Math.min(me.maxhp||100,d.h)); } return; }
   if(d.t==='readyup'){ if(G.players[d.pid]){ G.players[d.pid].ready=d.r; if(G.state==='lobby')refreshLobbyTable(); } return; }
+  if(d.t==='leave'){ if(d.pid&&G.players[d.pid])removePlayer(d.pid); return; }
+  if(d.t==='botshot'){ onRemoteShot(d.pid,d); return; }
+  if(d.t==='botrespawn'&&d.pid&&d.s){
+    const bp=G.players[d.pid];
+    if(bp){
+      bp.pos.set(d.s.x,d.s.y,d.s.z); bp.quat.set(d.s.qx,d.s.qy,d.s.qz,d.s.qw); bp.tPos.copy(bp.pos); bp.tQuat.copy(bp.quat);
+      bp.speed=d.s.s; bp.hp=100; bp.alive=true; bp.deadT=0; bp.mesh.visible=true; bp.on=true;
+    }
+    return;
+  }
+  if(d.t==='boatstate'&&d.list){ applyBoatState(d.list); return; }
+  if(d.t==='boatkill'){ applyBoatKill(d); return; }
+  if(d.t==='boatfx'){ return; }
+  if(d.t==='boatAA'){ onBoatAA(d); return; }
   if(d.t==='state'&&d.list){
     for(const s of d.list){
       const p=G.players[s.pid]; if(!p)continue;
@@ -1210,7 +1354,7 @@ function handleHostData(d){
       p.on=true;
       p.tPos.set(s.x,s.y,s.z); p.tQuat.set(s.qx,s.qy,s.qz,s.qw);
       p.tSpeed=s.s; p.hp=s.h; p.alive=s.a; p.deadT=s.dt;
-      p.bank=s.b; p.score=s.sc; p.kills=s.k; p.deaths=s.de;
+      p.bank=s.b; p.score=s.sc; p.kills=s.k; p.deaths=s.de; p.streak=s.st||0; p.streakT=8; p.isBot=!!s.bot;
       if(p.team!==s.team){ p.team=s.team; rebuildSkin(p); }
     }
   }
@@ -1224,10 +1368,10 @@ function startPlayFromClient(){
 }
 
 function updRemote(s){
-  const p=makePlayer({name:s.name,team:s.team,ptype:s.pt,pcolor:s.pc}); p.pid=s.pid;
+  const p=makePlayer({name:s.name,team:s.team,ptype:s.pt,pcolor:s.pc,isBot:!!s.bot}); p.pid=s.pid; p.isBot=!!s.bot;
   p.pos.set(s.x,s.y,s.z); p.quat.set(s.qx,s.qy,s.qz,s.qw);
   p.bank=s.b; p.hp=s.h; p.alive=s.a; p.speed=s.s; p.ready=s.ready;
-  p.score=s.sc; p.kills=s.k; p.deaths=s.de;
+  p.score=s.sc; p.kills=s.k; p.deaths=s.de; p.streak=s.st||0; p.streakT=8; p.isBot=!!s.bot;
   p.mesh.visible=s.a;
   p.tPos.copy(p.pos); p.tQuat.copy(p.quat);
   return p;
@@ -1239,14 +1383,16 @@ function rebuildSkin(p){
 function rebuildSkinFor(p,team){
   scene.remove(p.mesh);
   p.team=team;
-  const b=buildPlane(p.ptype||'spitfire',team,p.pcolor,p.name);
-  p.mesh=b.g; p.prop=b.prop; p.guns=b.guns; p.flash=b.muzzle;
+  if(!planeAllowed(p.ptype,team))p.ptype=defaultPlaneForTeam(team);
+  p.maxSpeed=PLANE_STATS[p.ptype].max;p.minSpeed=PLANE_STATS[p.ptype].min;p.turnRate=PLANE_STATS[p.ptype].turn;p.gunRate=PLANE_STATS[p.ptype].gun;
+  const b=buildPlane(p.ptype,team,p.pcolor,p.name);
+  p.mesh=b.g; p.prop=b.prop; p.guns=b.guns; p.flash=b.muzzle; p.nameSprite=b.nameSprite;
   p.mesh.position.copy(p.pos); p.mesh.quaternion.copy(p.quat);
   p.mesh.visible=p.alive; scene.add(p.mesh);
 }
 // Rebuild only if the chosen plane type/colour actually changed (returns true if rebuilt).
 function applyAppearance(p,type,color){
-  if(type==null)type=p.ptype||'spitfire';
+  if(type==null||!planeAllowed(type,p.team))type=defaultPlaneForTeam(p.team||ALLIED);
   if(color==null||color===undefined)color=p.pcolor;
   if(p.ptype===type&&p.pcolor===color)return false;
   p.ptype=type; p.pcolor=color;
@@ -1287,8 +1433,142 @@ function sendDeath(cause){ if(G.state!=='play'||!me||G.isHost)return;
   if(NET.hostConn&&NET.hostConn.open)NET.hostConn.send({t:'death',c:cause}); }
 
 /* =====================================================================
+   BOTS — host-only fillers so small matches still feel populated
+===================================================================== */
+let botSeq=0;
+function humanCount(){ let n=0; for(const pid of G.order){ if(!G.players[pid].isBot)n++; } return n; }
+function botCount(){ let n=0; for(const pid of G.order){ if(G.players[pid].isBot)n++; } return n; }
+function makeBot(){
+  const pid='b'+(++botSeq)+'_'+Math.floor(Math.random()*1e6).toString(36);
+  const names=['WINGMAN','VENGEANCE','PACIFIC','CORSAIR','FALCON','TIGER','RAPTOR','HAWKEYE','ZERO','HELLCAT'];
+  const p=makePlayer({name:'AI '+names[(botSeq-1)%names.length],isBot:true,team:null}); p.pid=pid; p.ready=true; p.isBot=true;
+  G.players[pid]=p; G.order.push(pid); assignTeams();
+  if(!p.team)p.team=(G.order.length%2)?ALLIED:LUFT;
+  assignAircraftForPlayer(p); rebuildSkinFor(p,p.team); initBotFlight(p); return p;
+}
+function removeOneBot(){
+  for(const pid of G.order.slice()){
+    const p=G.players[pid]; if(p&&p.isBot){ broadcast({t:'leave',pid}); removePlayer(pid); return true; }
+  }
+  return false;
+}
+function maintainBots(){
+  if(!G.isHost)return;
+  const humans=humanCount();
+  if(humans>=CFG.minCombatants){ while(botCount()>0) if(!removeOneBot())break; return; }
+  while(humans+botCount()<CFG.minCombatants) makeBot();
+}
+function initBotFlight(p){
+  p.pos.set(rand(-900,900),rand(180,520),rand(-900,900));
+  p.quat.identity(); p.fwd.set(0,0,-1); p.up.set(0,1,0); p.right.set(1,0,0);
+  p.speed=p.minSpeed+(p.maxSpeed-p.minSpeed)*rand(.58,.78); p.thr=.65; p.hp=100; p.alive=true; p.deadT=0; p.bank=0;
+  p.botCooldown=rand(.35,1.2); p.tPos.copy(p.pos); p.tQuat.copy(p.quat); p.on=true; p.mesh.visible=true;
+}
+function botTarget(p){
+  let best=null,bd=1e12;
+  for(const pid of G.order){ const o=G.players[pid]; if(!o||o===p||!o.alive||o.team===p.team)continue; const d=p.pos.distanceToSquared(o.pos); if(d<bd){bd=d;best=o;} }
+  return best;
+}
+function updateBots(dt){
+  if(!G.isHost||G.state!=='play')return;
+
+  for(const pid of G.order){
+    const p=G.players[pid];
+    if(!p||!p.isBot)continue;
+
+    // Dead bots remain dead until the normal respawn timer expires.
+    if(!p.alive){
+      p.deadT=(p.deadT||0)+dt;
+      if(p.deadT>=CFG.respawnT){
+        initBotFlight(p);
+        broadcast({t:'botrespawn',pid:p.pid,s:packOne(p)});
+      }
+      continue;
+    }
+
+    let target=botTarget(p);
+
+    // If there is no enemy to chase, fly an easy patrol loop rather than freezing.
+    if(!target){
+      p.botPatrol=(p.botPatrol||0)+dt*.28;
+      const patrolDir=new THREE.Vector3(Math.cos(p.botPatrol),Math.sin(p.botPatrol*.7)*.12, -0.35+Math.sin(p.botPatrol*.8)*.35).normalize();
+      const qPatrol=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,-1),patrolDir);
+      p.quat.slerp(qPatrol,Math.min(1,dt*.35));
+    }else{
+      const to=target.pos.clone().sub(p.pos);
+      const dist=Math.max(1,to.length());
+
+      // Keep bots moving through the combat area. They lead targets only a little,
+      // and their turn response is deliberately slower than a skilled human.
+      const lead=Math.min(95,dist*.10);
+      const aimPoint=target.pos.clone().addScaledVector(target.fwd,lead);
+      aimPoint.y += clamp((target.pos.y-p.pos.y)*.18,-55,55);
+      const desired=aimPoint.sub(p.pos).normalize();
+
+      const currentForward=new THREE.Vector3(0,0,-1).applyQuaternion(p.quat);
+      const desiredQuat=new THREE.Quaternion().setFromUnitVectors(currentForward,desired);
+      const worldTarget=desiredQuat.clone().multiply(p.quat).normalize();
+      p.quat.slerp(worldTarget,Math.min(1,dt*(dist>900?.85:1.15)));
+    }
+
+    p.quat.normalize();
+    p.fwd.set(0,0,-1).applyQuaternion(p.quat);
+    p.up.set(0,1,0).applyQuaternion(p.quat);
+    p.right.set(1,0,0).applyQuaternion(p.quat);
+
+    // Keep the AI within the playable ocean corridor and away from the ground.
+    p.bank=clamp(p.fwd.x*1.5,-1,1);
+    const targetSpeed=target ?
+      p.minSpeed+(p.maxSpeed-p.minSpeed)*(target&&p.pos.distanceTo(target.pos)>650?.88:.72) :
+      p.minSpeed+(p.maxSpeed-p.minSpeed)*.68;
+    p.speed+=(targetSpeed-p.speed)*Math.min(1,dt*.9);
+    p.pos.addScaledVector(p.fwd,p.speed*dt);
+    p.pos.y=clamp(p.pos.y,110,1250);
+
+    // Soft boundary steering instead of a hard stop.
+    const horiz=Math.hypot(p.pos.x,p.pos.z);
+    if(horiz>CFG.worldR*.78){
+      const toCenter=new THREE.Vector3(-p.pos.x,0,-p.pos.z).normalize();
+      const qBack=new THREE.Quaternion().setFromUnitVectors(p.fwd,toCenter);
+      p.quat.slerp(qBack.clone().multiply(p.quat),Math.min(1,dt*1.8));
+    }
+
+    // Bot weapons: cosmetic tracers for every shot, but modest real damage.
+    p.botCooldown=(p.botCooldown||0)-dt;
+    if(target){
+      const dist=p.pos.distanceTo(target.pos);
+      if(dist<820&&p.botCooldown<=0){
+        const spread=dist<420?.065:.11;
+        const lead2=Math.min(80,dist*.075);
+        const shotDir=target.pos.clone().addScaledVector(target.fwd,lead2).sub(p.pos).normalize();
+        shotDir.x+=rand(-spread,spread); shotDir.y+=rand(-spread*.7,spread*.7); shotDir.z+=rand(-spread,spread); shotDir.normalize();
+        broadcast({t:'botshot',pid:p.pid,x:p.pos.x,y:p.pos.y,z:p.pos.z,fx:shotDir.x,fy:shotDir.y,fz:shotDir.z});
+        onRemoteShot(p.pid,{x:p.pos.x,y:p.pos.y,z:p.pos.z,fx:shotDir.x,fy:shotDir.y,fz:shotDir.z});
+        p.botCooldown=.9+Math.random()*1.1;
+        // Real damage is intentionally low and only at closer range.
+        if(dist<560 && Math.random()<(dist<350?.38:.18)) hostApplyHit(p.pid,target.pid,CFG.dmg*.34);
+      }
+    }
+
+    p.tPos.copy(p.pos); p.tQuat.copy(p.quat); p.on=true;
+    if(p.mesh){
+      p.mesh.position.copy(p.pos); p.mesh.quaternion.copy(p.quat);
+      _q.setFromAxisAngle(ZA,-p.bank); p.mesh.quaternion.multiply(_q);
+      if(p.prop)p.prop.rotation.z+=p.speed*dt*1.6;
+    }
+  }
+}
+
+/* =====================================================================
    TEAM ASSIGNMENT
 ===================================================================== */
+function assignAircraftForPlayer(p){
+  if(!p||!p.team)return;
+  const idx=Math.max(0,G.order.indexOf(p.pid));
+  const desired=aircraftForTeam(p.team,idx);
+  if(p.ptype!==desired){ p.ptype=desired; p.maxSpeed=PLANE_STATS[desired].max; p.minSpeed=PLANE_STATS[desired].min; p.turnRate=PLANE_STATS[desired].turn; p.gunRate=PLANE_STATS[desired].gun; }
+}
+function assignAllAircraft(){ for(const pid of G.order) assignAircraftForPlayer(G.players[pid]); }
 function assignTeams(){
   // Assign any unassigned (new) player to the currently-smaller team.
   let ca=0,cl=0;
@@ -1297,6 +1577,8 @@ function assignTeams(){
     const p=G.players[pid];
     if(!p.team){ if(cl<ca){ p.team=LUFT; cl++; } else { p.team=ALLIED; ca++; } }
   }
+  // Always assign the correct aircraft before the lobby is shown.
+  assignAllAircraft();
   // Only force-rebalance existing players once the match locks (start).
   if(!G.locked)return;
   for(let safe=0; safe<G.order.length*3; safe++){
@@ -1306,6 +1588,7 @@ function assignTeams(){
     if(l.length>a.length+1){ const one=l.shift(); G.players[one].team=ALLIED; continue; }
     break;
   }
+  assignAllAircraft();
 }
 
 /* =====================================================================
@@ -1408,114 +1691,74 @@ function updateGroundShadow(){
   }
 }
 
+function shortPid(pid){ return String(pid||'').replace(/[^a-z0-9]/gi,'').slice(-5).toUpperCase().padStart(5,'0'); }
+function hudPanel(x,y,wid,hei,accent,alpha=.78){
+  h.save(); h.fillStyle=`rgba(7,13,18,${alpha})`; h.fillRect(x,y,wid,hei); h.strokeStyle='rgba(188,210,220,.16)'; h.lineWidth=1; h.strokeRect(x+.5,y+.5,wid-1,hei-1);
+  h.fillStyle=accent; h.fillRect(x,y,3,hei); h.restore();
+}
 function drawHUD(dt){
-  const W=innerWidth,H=innerHeight;
-  h.clearRect(0,0,W,H);
-  if(G.state!=='play'||!me)return;
-  if(me.alive===false&&G.state==='play'){ /* death handled by out overlay */ }
-  if(G.dmgFlash>0){
-    const gr=h.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.75);
-    gr.addColorStop(0,'rgba(200,30,20,0)'); gr.addColorStop(1,'rgba(200,30,20,'+(G.dmgFlash*0.55)+')');
-    h.fillStyle=gr; h.fillRect(0,0,W,H); G.dmgFlash-=dt;
-  }
-  const cx=W/2, cy=H/2;
-  const tc=me.team===ALLIED?'#5ab0e8':'#ff7a5a';
-  // reticle — white with dark outline so it shows against sea, sky & terrain
-  const ret=d=>{ h.beginPath(); h.arc(cx,cy,13,0,Math.PI*2); h.stroke(); };
-  h.lineWidth=4; h.strokeStyle='rgba(10,15,20,0.75)'; ret();      // dark outline pass
-  h.lineWidth=1.6; h.strokeStyle='#ffffff'; ret();                 // bright core
-  // cardinal tick marks
-  h.strokeStyle='#ffffff'; h.lineWidth=2;
-  for(const a of [0,Math.PI/2,Math.PI,Math.PI*3/2]){
-    const x1=Math.cos(a)*17, y1=Math.sin(a)*17, x2=Math.cos(a)*22, y2=Math.sin(a)*22;
-    h.beginPath(); h.moveTo(cx+x1,cy+y1); h.lineTo(cx+x2,cy+y2); h.stroke();
-  }
-  h.fillStyle='#ffffff';
-  h.beginPath(); h.arc(cx,cy,2,0,Math.PI*2); h.fill();
-  // hit marker
-  if(G.hitmark>0){ G.hitmark-=dt; h.strokeStyle='#fff';
-    h.beginPath();
-    h.moveTo(cx-22,cy);h.lineTo(cx-14,cy); h.moveTo(cx+14,cy);h.lineTo(cx+22,cy);
-    h.moveTo(cx,cy-22);h.lineTo(cx,cy-14); h.moveTo(cx,cy+14);h.lineTo(cx,cy+22); h.stroke(); }
-  // friendly/foe markers around reticle maybe not
+  const W=innerWidth,H=innerHeight; h.clearRect(0,0,W,H); if(G.state!=='play'||!me)return;
+  const allied=me.team===ALLIED, tc=allied?'#67b6ee':'#f06c5d', enemy=allied?'#f06c5d':'#67b6ee';
+  if(G.dmgFlash>0){ const gr=h.createRadialGradient(W/2,H/2,H*.2,W/2,H/2,H*.8); gr.addColorStop(0,'rgba(255,40,25,0)'); gr.addColorStop(1,'rgba(255,35,22,'+(G.dmgFlash*.48)+')'); h.fillStyle=gr; h.fillRect(0,0,W,H); G.dmgFlash-=dt; }
+  // centre flight reticle
+  const cx=W/2,cy=H/2; h.strokeStyle='rgba(6,12,16,.85)';h.lineWidth=4;h.beginPath();h.arc(cx,cy,18,0,Math.PI*2);h.stroke();h.strokeStyle='rgba(245,248,248,.92)';h.lineWidth=1.6;h.beginPath();h.arc(cx,cy,18,0,Math.PI*2);h.stroke();
+  h.beginPath();h.moveTo(cx-32,cy);h.lineTo(cx-23,cy);h.moveTo(cx+23,cy);h.lineTo(cx+32,cy);h.moveTo(cx,cy-32);h.lineTo(cx,cy-23);h.moveTo(cx,cy+23);h.lineTo(cx,cy+32);h.stroke(); h.fillStyle='#fff';h.beginPath();h.arc(cx,cy,2.4,0,Math.PI*2);h.fill();
+  if(G.hitmark>0){G.hitmark-=dt;h.strokeStyle='#fff';h.lineWidth=2.5;h.beginPath();h.moveTo(cx-26,cy-26);h.lineTo(cx-15,cy-15);h.moveTo(cx+26,cy-26);h.lineTo(cx+15,cy-15);h.moveTo(cx-26,cy+26);h.lineTo(cx-15,cy+15);h.moveTo(cx+26,cy+26);h.lineTo(cx+15,cy+15);h.stroke();}
+  // mission/status panel
+  hudPanel(18,18,290,88,tc,.78); txt(allied?'ALLIED COMMAND':'LUFTWAFFE COMMAND',32,39,12,tc,'left',true); txt(me.name.toUpperCase(),32,64,22,'#f4f8fa','left',true); txt((PLANE_STATS[me.ptype]||PLANE_STATS.mustang).name,32,84,11,'#a7b9c4'); txt('K '+me.kills+'  /  D '+me.deaths+'  /  '+me.score,32,98,10,'#8198a5');
+  // Team score / objective
+  const ta=teamScore(ALLIED),tl=teamScore(LUFT),target=CFG.winTarget(); hudPanel(W/2-205,16,410,68,allied?'#5aa9e6':'#e45a4d',.72); txt('AIR SUPERIORITY',W/2,34,10,'#93a5af','center',true); txt('ALLIES',W/2-175,56,14,'#67b6ee','left',true); txt(String(ta),W/2-105,57,17,'#eef7fa','right',true); txt(String(tl),W/2+105,57,17,'#eef7fa','left',true); txt(' / '+target,W/2,57,11,'#8fa1aa','center'); h.fillStyle='#203744';h.fillRect(W/2-140,66,280,6); h.fillStyle='#5aa9e6';h.fillRect(W/2-140,66,280*(ta/Math.max(target,ta+tl,1)),6); h.fillStyle='#e45a4d';h.fillRect(W/2-140+280*(ta/Math.max(target,ta+tl,1)),66,280*(tl/Math.max(target,ta+tl,1)),6); txt('LUFTWAFFE',W/2+175,56,14,'#f06c5d','right',true);
+  // Consolidated flight/status panel on the left: flight data, gun heat and structure.
+  hudPanel(18,H-150,390,132,tc,.80); const pst=PLANE_STATS[me.ptype]||PLANE_STATS.mustang;
+  txt('FLIGHT',34,H-128,11,'#93a5af','left',true);
+  txt(Math.round(me.speed),34,H-94,34,'#f6f9fa','left',true); txt('MPH',106,H-96,11,'#9cb1bc');
+  txt('ALT',34,H-72,10,'#8399a5','left',true); txt(Math.round(me.pos.y),78,H-72,15,'#ecf4f7');
+  txt('MAX',166,H-72,10,'#8399a5','left',true); txt(Math.round(pst.max),202,H-72,15,'#ecf4f7');
+  txt('THR',34,H-48,10,'#8399a5','left',true); bar(70,H-56,120,9,me.thr,tc);
+  txt('GUN HEAT',210,H-48,10,'#8399a5','left',true); bar(277,H-56,76,9,me.heat,me.overheated?'#ef5d54':'#dcb14e');
+  txt(me.overheated?'COOLING':'∞ AMMO',210,H-68,10,me.overheated?'#ef6c5e':'#c8d5db');
+  txt('STRUCTURE',34,H-25,10,'#8399a5','left',true); bar(108,H-33,220,10,me.hp/100,me.hp>50?'#70c77f':me.hp>25?'#e0aa43':'#e65f57'); txt(Math.max(0,Math.ceil(me.hp))+'%',342,H-24,11,'#d8e4e9','right');
 
-  // HP
-  txt('YOUR PLANE',20,H-52,13,tc);
-  bar(20,H-40,240,15,me.hp/100,me.hp>50?'#7ec850':me.hp>25?'#e8a33c':'#e84c3c');
-  txt(Math.ceil(me.hp),268,H-27,13,'#e8e2cf');
-  // throttle
-  bar(20,H-220,14,150,me.thr,'#7fb6d9');
-  txt('THR',12,H-228,11,tc);
-
-  // score
-  txt('SCORE',20,32,13,tc);
-  txt(me.score,20,64,30,'#ffffff','left',true);
-  txt(me.kills+' kills • '+me.deaths+' deaths',20,84,12,'rgba(240,230,200,0.75)');
-
-  // team score top-center — balanced bar + scores + leading indicator
-  const ta=teamScore(ALLIED), tl=teamScore(LUFT), tsum=Math.max(1,ta+tl);
-  const bw=260, bh=9, bx=W/2-bw/2, by=46;
-  h.fillStyle='rgba(6,10,16,0.55)'; h.fillRect(bx-12,by-34,bw+24,52);
-  h.strokeStyle='rgba(240,230,200,0.25)'; h.lineWidth=1; h.strokeRect(bx-12,by-34,bw+24,52);
-  txt('RFC', bx-10, by-36, 15, '#5ab0e8','left',true);
-  txt('FOKKER', bx+bw+10, by-36, 15, '#ff7a5a','right',true);
-  txt(String(ta), bx+bw/2-8, by-7, 22, '#5ab0e8','right',true);
-  txt(String(tl), bx+bw/2+8, by-7, 22, '#ff7a5a','left',true);
-  const aw=bw*(ta/tsum);
-  h.fillStyle='#5ab0e8'; h.fillRect(bx,by,aw,bh);
-  h.fillStyle='#ff7a5a'; h.fillRect(bx+aw,by,bw-aw,bh);
-  h.strokeStyle='rgba(240,230,200,0.35)'; h.lineWidth=1; h.strokeRect(bx,by,bw,bh);
-  if(ta!==tl) txt('* '+(ta>tl?'RFC':'FOKKER')+' LEADING *', W/2, by-16, 11, ta>tl?'#5ab0e8':'#ff7a5a','center');
-  else txt('DEAD HEAT', W/2, by-16, 11, '#e8e2cf','center');
-
-  // room info top-right: room code + pilots + mute (nicer chip on canvas)
-  let nal=0,nlx=0; for(const pid in G.players){ if(G.players[pid].team===ALLIED)nal++; else nlx++; }
-  const rw=172;
-  h.fillStyle='rgba(6,10,16,0.55)'; h.fillRect(W-12-rw,10,rw,56);
-  h.strokeStyle='rgba(240,230,200,0.25)'; h.lineWidth=1; h.strokeRect(W-12-rw,10,rw,56);
-  txt('ROOM '+NET.myGameId, W-20, 26, 15, '#ffd257','right',true);
-  txt('PILOTS '+G.order.length+'/'+CFG.maxPlayers, W-20, 44, 12, 'rgba(240,230,200,0.9)','right');
-  txt(SFX.muted?'[ SOUND MUTED ]':'RFC '+nal+'  ·  FOKKER '+nlx, W-20, 60, 11, SFX.muted?'#e84c3c':'rgba(240,230,200,0.75)','right');
-
-  // radar
-  const rx=W-108, ry=H-108, rr=80;
-  h.fillStyle='rgba(10,22,16,0.55)'; h.beginPath(); h.arc(rx,ry,rr,0,Math.PI*2); h.fill();
-  h.strokeStyle='rgba(150,220,160,0.5)'; h.lineWidth=1.5;
-  h.beginPath(); h.arc(rx,ry,rr,0,Math.PI*2); h.stroke();
-  h.beginPath(); h.arc(rx,ry,rr/2,0,Math.PI*2); h.stroke();
-  const yaw=Math.atan2(me.fwd.x,-me.fwd.z), ca=Math.cos(yaw), sa=Math.sin(yaw);
+  // RADAR — restored as a compact all-contacts tactical display.
+  // Range is large enough to keep nearby combat readable, while the player is
+  // always centred and oriented with their current heading. Aircraft use team
+  // colours; ships are shown as slightly larger squares.
+  const rrx=W-108, rry=H-108, rrad=78, rrange=2400;
+  h.save();
+  h.fillStyle='rgba(4,15,15,.68)'; h.beginPath(); h.arc(rrx,rry,rrad,0,Math.PI*2); h.fill();
+  h.strokeStyle='rgba(122,213,170,.50)'; h.lineWidth=1.3; h.beginPath(); h.arc(rrx,rry,rrad,0,Math.PI*2); h.stroke();
+  h.strokeStyle='rgba(122,213,170,.22)'; h.beginPath(); h.arc(rrx,rry,rrad*.5,0,Math.PI*2); h.stroke();
+  h.beginPath(); h.moveTo(rrx-rrad,rry); h.lineTo(rrx+rrad,rry); h.moveTo(rrx,rry-rrad); h.lineTo(rrx,rry+rrad); h.stroke();
+  // heading tick / sweep
+  const yaw=Math.atan2(me.fwd.x,-me.fwd.z), rca=Math.cos(yaw), rsa=Math.sin(yaw);
+  h.strokeStyle='rgba(122,255,190,.45)'; h.beginPath(); h.moveTo(rrx,rry); h.lineTo(rrx+Math.sin(yaw)*rrad*.9,rry-Math.cos(yaw)*rrad*.9); h.stroke();
+  // aircraft contacts
   for(const pid in G.players){
     const p=G.players[pid]; if(p===me||!p.alive)continue;
     const dx=p.pos.x-me.pos.x, dz=p.pos.z-me.pos.z;
-    let ox=(dx*ca+dz*sa)/1800*rr, oz=(-dx*sa+dz*ca)/1800*rr;
-    const l=Math.hypot(ox,oz);
-    if(l>rr-6){ ox*=(rr-6)/l; oz*=(rr-6)/l; }
-    if(l<rr-2){ h.fillStyle=p.team===ALLIED?'#5ab0e8':'#ff7a5a'; h.fillRect(rx+ox-3,ry+oz-3,6,6); }
+    let ox=(dx*rca+dz*rsa)/rrange*rrad, oy=(-dx*rsa+dz*rca)/rrange*rrad;
+    const d=Math.hypot(ox,oy); if(d>rrad-4){ const k=(rrad-4)/Math.max(d,.001); ox*=k; oy*=k; }
+    h.fillStyle=p.team===me.team?'#67b6ee':'#f06c5d';
+    h.beginPath(); h.arc(rrx+ox,rry+oy,p.team===me.team?2.5:3.2,0,Math.PI*2); h.fill();
   }
-  h.fillStyle='#fff';
-  h.beginPath(); h.moveTo(rx,ry-6); h.lineTo(rx-4,ry+5); h.lineTo(rx+4,ry+5); h.closePath(); h.fill();
-
-  // scoreboard (Tab)
+  // boats
+  if(typeof boats!=='undefined'){
+    for(const b of boats){ if(!b.alive)continue;
+      const bp=b.group.position, dx=bp.x-me.pos.x, dz=bp.z-me.pos.z;
+      let ox=(dx*rca+dz*rsa)/rrange*rrad, oy=(-dx*rsa+dz*rca)/rrange*rrad;
+      const d=Math.hypot(ox,oy); if(d>rrad-4){ const k=(rrad-4)/Math.max(d,.001); ox*=k; oy*=k; }
+      h.fillStyle=b.team===me.team?'#8cc8e8':'#ff9b73'; h.fillRect(rrx+ox-2.5,rry+oy-2.5,5,5);
+    }
+  }
+  h.fillStyle='#f4f8fa'; h.beginPath(); h.moveTo(rrx,rry-6); h.lineTo(rrx-4,rry+5); h.lineTo(rrx+4,rry+5); h.closePath(); h.fill();
+  txt('RADAR',rrx,rry+rrad+15,9,'rgba(170,220,198,.78)','center',true);
+  h.restore();
+  // Aircraft IDs are rendered as world-space sprites attached beneath each plane.
+  // Their size is adjusted by distance in updateRemotes(), so distant aircraft
+  // have smaller tags and close aircraft have larger, more readable tags.
   if(showBoard)drawBoard(W,H);
-
-  // messages
-  G.msgs.forEach((m,i)=>{
-    m.t+=dt;
-    const a=m.t<3.2?1:clamp(1-(m.t-3.2)/0.8,0,1);
-    h.globalAlpha=a; txt(m.text,W/2,H-110-i*20,14,m.col,'center'); h.globalAlpha=1;
-  });
-  G.msgs=G.msgs.filter(m=>m.t<4);
-  for(let i=G.popups.length-1;i>=0;i--){
-    const p=G.popups[i]; p.t+=dt;
-    if(p.t>1.4){ G.popups.splice(i,1); continue; }
-    _v.copy(p.pos).project(camera);
-    if(_v.z>1||_v.z<-1)continue;
-    const sx=(_v.x*0.5+0.5)*W, sy=(-_v.y*0.5+0.5)*H-p.t*30;
-    h.globalAlpha=clamp(1-(p.t/1.4),0,1);
-    txt(p.text,sx,sy,15,p.col,'center',true);
-    h.globalAlpha=1;
-  }
-  txt('W/S throttle • A/D turn • ↑/↓ pitch • Mouse aim • Click/Space fire • Tab board',W/2,H-14,11,'rgba(240,230,200,0.5)','center');
+  G.msgs.forEach((m,i)=>{m.t+=dt;const a=m.t<3.0?1:clamp(1-(m.t-3.0)/1.0,0,1);h.globalAlpha=a;txt(m.text,W/2,H-100-i*18,13,m.col,'center',true);h.globalAlpha=1;});G.msgs=G.msgs.filter(m=>m.t<4);
+  for(let i=G.popups.length-1;i>=0;i--){const p=G.popups[i];p.t+=dt;if(p.t>1.4){G.popups.splice(i,1);continue;}_v.copy(p.pos).project(camera);if(_v.z>1||_v.z<-1)continue;const sx=(_v.x*.5+.5)*W,sy=(-_v.y*.5+.5)*H-p.t*30;h.globalAlpha=clamp(1-p.t/1.4,0,1);txt(p.text,sx,sy,15,p.col,'center',true);h.globalAlpha=1;}
 }
 function teamScore(team){ let s=0; for(const pid in G.players){const p=G.players[pid]; if(p.team===team)s+=p.score;} return s; }
 let showBoard=false;
@@ -1570,7 +1813,7 @@ function updateCamera(dt){
   camera.position.x+=rand(-1,1)*G.shake;
   camera.position.y+=rand(-1,1)*G.shake;
   camera.position.z+=rand(-1,1)*G.shake;
-  const fovT=68+18*(me.speed-CFG.minSpeed)/(CFG.maxSpeed-CFG.minSpeed);
+  const minS=me.minSpeed||CFG.minSpeed,maxS=me.maxSpeed||CFG.maxSpeed;const fovT=68+18*clamp((me.speed-minS)/(maxS-minS),0,1);
   camera.fov+=(fovT-camera.fov)*Math.min(1,dt*4);
   camera.updateProjectionMatrix();
 }
@@ -1591,11 +1834,24 @@ function updateRemotes(dt){
       p.mesh.quaternion.copy(p.quat);
       _q.setFromAxisAngle(ZA,-p.bank); p.mesh.quaternion.multiply(_q);
       if(p.prop)p.prop.rotation.z+=p.speed*dt*1.6;
+      // Player ID tag: attached directly underneath the aircraft. It becomes
+      // larger when nearby and smaller at range, while perspective adds a
+      // second natural distance cue.
+      if(p.nameSprite){
+        const d=clamp(p.pos.distanceTo(camera.position),90,2200);
+        const near=1-clamp((d-90)/2110,0,1);
+        // Far aircraft remain legible; close aircraft get a clear, large callsign.
+        const scale=5.2+near*5.6;
+        p.nameSprite.scale.set(scale,scale*0.229,1);
+        p.nameSprite.position.set(0,-4.85,0.3);
+        p.nameSprite.visible=true;
+      }
       p.mesh.visible=true;
       // damage smoke on remote
       if(p.hp<55&&Math.random()*dt<0.5)smoke.spawn(p.pos,_v.set(rand(-4,4),rand(2,7),rand(-4,4)),rand(0.8,1.4),0.3,0.3,0.3,-3);
     }else{
       p.mesh.visible=false;
+      if(p.nameSprite)p.nameSprite.visible=false;
     }
   }
 }
@@ -1636,6 +1892,7 @@ function show(id,on){ const el=$(id); if(!el)return; el.style.display=on===false
 function hide(id){ const el=$(id); if(!el)return; el.style.display='none'; }
 function showLobby(){
   G.state='lobby';
+  if(G.isHost){ assignTeams(); maintainBots(); }
   hide('menu'); $('lobby').classList.add('show'); hide('pause');
   $('lbCode').textContent=NET.myGameId||'';
   refreshLobbyTable();
@@ -1647,17 +1904,16 @@ function refreshLobbyTable(){
     const p=G.players[pid];
     if(!p)continue;
     const tr=document.createElement('tr');
-    const nm=p.name+(pid===G.myId?' (you)':'');
-    tr.innerHTML='<td>'+nm+'</td><td>'+(p.team===ALLIED?'<span style="color:#4e9ad0;font-weight:800">RFC</span>':'<span style="color:#d84a3a;font-weight:800">FOKKER</span>')+'</td>'+
-      '<td><span class="ready-tag '+(p.ready?'yes':'no')+'">'+(p.ready?'READY':'WAIT')+'</span></td>';
+    const nm=p.name+(pid===G.myId?' (you)':'')+(p.isBot?' • AI':'');
+    tr.innerHTML='<td>'+nm+'</td><td>'+(p.team===ALLIED?'<span style="color:#4e9ad0;font-weight:800">ALLIES</span>':'<span style="color:#d84a3a;font-weight:800">LUFTWAFFE</span>')+'</td>'+
+      '<td><b>'+((PLANE_STATS[p.ptype]||PLANE_STATS[defaultPlaneForTeam(p.team)]).name)+'</b></td><td><span class="ready-tag '+(p.ready?'yes':'no')+'">'+(p.ready?'READY':'WAIT')+'</span></td>';
     tb.appendChild(tr);
   }
   $('lbCount').textContent=G.order.length;
-  if(me){ $('lbTeamName').textContent=me.team===ALLIED?'RFC':'FOKKER';
+  if(me){ $('lbTeamName').textContent=me.team===ALLIED?'ALLIES':'LUFTWAFFE';
     $('lbTeamSwatch').style.background=me.team===ALLIED?'#4e9ad0':'#d84a3a'; }
 }
 
-buildMenuPickers();
 $('hostBtn').addEventListener('click',hostRoom);
 $('joinBtn').addEventListener('click',joinRoom);
 $('readyBtn').addEventListener('click',()=>{
@@ -1726,8 +1982,8 @@ function applyDead(m){
   const wasAlive=isMe?me.alive:victim.alive;
   if(isMe&&wasAlive){
     // I got shot down by host authority
-    me.alive=false; killMsg=m.k===me.pid?'crashed':'shot'; me.deaths++;
-    explosionAt(me.pos,2.2); me.mesh.visible=false; G.outPending=2.2;
+    me.alive=false; killMsg=m.c==='crashed'||!m.k?'crashed':'shot'; me.deaths++; me.streak=0; me.streakT=0;
+    explosionAt(me.pos,2.2); me.mesh.visible=false; if(G.state==='play'&&!G.winner)G.outPending=2.2;
   }else{
     victim.alive=false; victim.hp=0;
     if(victim.mesh)victim.mesh.visible=false;
@@ -1737,37 +1993,51 @@ function applyDead(m){
 function applyAward(m){
   const k=G.players[m.k], v=G.players[m.v];
   if(!k||!v)return;
-  k.kills++; k.score+=100;
-  addKillFeed(k.name+' shot down '+v.name,k.team);
+  k.kills++; k.streak=(k.streak||0)+1; k.streakT=8;
+  const streakBonus=k.streak>=2?Math.min(150,(k.streak-1)*50):0;
+  k.score+=100+streakBonus;
+  addKillFeed(k.name+' shot down '+v.name+(streakBonus?'  •  STREAK +'+streakBonus:'') ,k.team);
+  if(k.pid===me.pid&&streakBonus)msg(k.streak+' KILL STREAK  +'+streakBonus,'#ffd66e');
   if(m.v===me.pid){ SFX.thud(); }
   // Host-authoritative win check: the first team to CFG.winTarget() kills wins.
   if(G.isHost&&!G.winner)checkWin();
 }
 function teamKills(team){ let s=0; for(const pid in G.players){const p=G.players[pid]; if(p.team===team)s+=p.kills;} return s; }
+function teamAliveCount(team){ let n=0; for(const pid of G.order){ const p=G.players[pid]; if(p&&p.team===team&&p.alive)n++; } return n; }
 function checkWin(){
-  if(G.winner)return;
+  if(G.winner||G.state==='over')return;
   const target=CFG.winTarget();
+  const scoreTarget=target*100; // same scale as the normal 100-point kill award
+  // Primary objectives: reach the kill target OR the equivalent team score.
   for(const t of [ALLIED,LUFT]){
-    if(teamKills(t)>=target){
-      matchOver(t);
-      return;
-    }
+    if(teamKills(t)>=target || teamScore(t)>=scoreTarget){ matchOver(t); return; }
   }
+  // Secondary objective: if every aircraft on one side is down, the surviving
+  // side wins immediately. This is especially important for small bot matches.
+  const aAlive=teamAliveCount(ALLIED), lAlive=teamAliveCount(LUFT);
+  const aPresent=G.order.some(pid=>G.players[pid]&&G.players[pid].team===ALLIED);
+  const lPresent=G.order.some(pid=>G.players[pid]&&G.players[pid].team===LUFT);
+  if(aPresent&&lPresent&&aAlive===0&&lAlive>0){ matchOver(LUFT); return; }
+  if(aPresent&&lPresent&&lAlive===0&&aAlive>0){ matchOver(ALLIED); return; }
 }
 // Round over — a team reached the kill target. Freeze the match on every peer
 // and show the winner overlay. Only the host broadcasts; everyone applies it.
 function matchOver(winner){
+  if(G.winner===winner && G.state==='over')return;
   G.winner=winner;
+  G.state='over';
+  G.outPending=0; outShown=false;
+  hide('out');
   const target=CFG.winTarget();
   const aK=teamKills(ALLIED), lK=teamKills(LUFT);
   const tcol=winner===ALLIED?'#4e9ad0':'#d84a3a';
-  const tn=winner===ALLIED?'RFC':'FOKKER';
+  const tn=winner===ALLIED?'ALLIES':'LUFTWAFFE';
   const winShown=$('winTitle'); if(winShown){
     winShown.textContent=tn+' WIN THE ROUND';
     winShown.style.color=tcol;
     $('winStats').innerHTML=
-      'First to <b>'+target+'</b> kills.<br>'+
-      'RFC '+aK+' &nbsp;•&nbsp; FOKKER '+lK;
+      'First to <b>'+target+'</b> kills or <b>'+(target*100)+'</b> team points — or wipe out the enemy.<br>'+
+      'ALLIES '+aK+' &nbsp;•&nbsp; LUFTWAFFE '+lK;
   }
   // Final ranking — top pilots by kills, fewest deaths breaks ties.
   const sorted=G.order
@@ -1783,7 +2053,7 @@ function matchOver(winner){
     const tcol2=p.team===ALLIED?'#4e9ad0':'#d84a3a';
     tr.innerHTML='<td>'+place+'</td>'+
       '<td>'+(p.pid===me.pid?'★ ':'')+p.name+'</td>'+
-      '<td><span style="color:'+tcol2+';font-weight:800">'+(p.team===ALLIED?'RFC':'FOKKER')+'</span></td>'+
+      '<td><span style="color:'+tcol2+';font-weight:800">'+(p.team===ALLIED?'ALLIES':'LUFTWAFFE')+'</span></td>'+
       '<td>'+p.kills+'</td><td>'+p.deaths+'</td>';
     tbody.appendChild(tr);
   });
@@ -1794,8 +2064,17 @@ function matchOver(winner){
 }
 function rematch(){
   G.winner=null;
+  G.locked=false;
+  G.state='lobby';
+  for(const pid of G.order){
+    const p=G.players[pid]; if(!p)continue;
+    p.ready=false; p.hp=100; p.alive=true; p.kills=0; p.deaths=0; p.score=0; p.streak=0; p.streakT=0;
+    if(p.isBot)initBotFlight(p);
+    else if(p.pid===me.pid) { p.mesh.visible=true; initMyFlight(); }
+  }
   $('win').classList.remove('show');
-  // Back to the hangar (lobby) so the host can ready up a fresh round.
+  $('out').classList.remove('show');
+  if(G.isHost){ assignTeams(); maintainBots(); broadcast({t:'resetround',players:packPlayers()}); }
   showLobby();
 }
 
@@ -1823,10 +2102,12 @@ function tick(){
 
   updateClouds(dt);
   updateSky(dt);
+  updateBoats(dt);
   updateWater(dt);
   sparks.update(dt); smoke.update(dt); muzzleSmoke.update(dt); tracers.update(dt);
 
   if(G.state==='play'&&me&&!G.winner){
+    if(G.isHost)updateBots(dt);
     updateMyFlight(dt);
     updateBullets(dt);
     updateRemotes(dt);
@@ -1839,7 +2120,7 @@ function tick(){
   }
 
   // death overlay timer
-  if(me&&!me.alive&&G.state==='play'&&G.outPending!=null){
+  if(me&&!me.alive&&G.state==='play'&&!G.winner&&G.outPending!=null){
     G.outPending-=dt;
     if(G.outPending<=0&&!outShown){ outShown=true;
       $('outTitle').textContent=killMsg==='crashed'?'CRASHED':'SHOT DOWN';
@@ -1850,7 +2131,7 @@ function tick(){
   }
 
   // lobby periodic refresh + host state relay
-  if(G.state==='lobby'&&G.isHost){ refreshLobbyTable(); }
+  if(G.state==='lobby'&&G.isHost){ maintainBots(); refreshLobbyTable(); }
   if(G.state==='play'&&!G.winner&&G.isHost){ hostSendTick(dt); }
   if(G.state==='play'&&!G.winner&&!G.isHost&&me){ sendMyState(); if(dt>0.03)sendMyState(); }
 

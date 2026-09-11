@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -704,7 +705,7 @@
       goalPos: new THREE.Vector3(0,0,0),
       size: 0, goalMesh: null,
       dual: false, mazeHalf: 0, viewHalf: 0, gapHalf: 0,
-      enemyGrid: null, centerCol: 0, enemyProtect: null,
+      enemyGrid: null, centerCol: 0, enemyProtect: null, _enemySwitchCell: null,
     };
     const levelGroup = new THREE.Group();
     tableGroup.add(levelGroup);
@@ -738,7 +739,8 @@
     };
     const portalMat = new THREE.MeshStandardMaterial({ color: 0x44ff88, emissive: 0x00aa44, emissiveIntensity: 0.4 });
     const jumpMat = new THREE.MeshStandardMaterial({ color: 0x44aaff, emissive: 0x0044aa, emissiveIntensity: 0.3 });
-    const boostMat = new THREE.MeshStandardMaterial({ color: 0x44ff88, emissive: 0x00ff66, emissiveIntensity: 0.55 });
+    const boostMat = new THREE.MeshStandardMaterial({ color: 0x35ff9a, emissive: 0x00ff66, emissiveIntensity: 1.2, roughness: 0.22, metalness: 0.35 });
+    const boostGlowMat = new THREE.MeshBasicMaterial({ color: 0x66ffbb, transparent: true, opacity: 0.9 });
     const iceMat = new THREE.MeshStandardMaterial({ color: 0xbfefff, emissive: 0x66ccff, emissiveIntensity: 0.15, roughness: 0.05, metalness: 0.3 });
     const floorMat = new THREE.MeshStandardMaterial({ map: gridTex, color: 0xffffff, roughness: 0.85, metalness: 0.05 });
     const goalMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.5 });
@@ -774,7 +776,7 @@
       levelData.walls = []; levelData.electricWalls = [];
       levelData.portals = []; levelData.jumpPads = []; levelData.barriers = []; levelData.colorSwitches = [];
       levelData.boostTiles = []; levelData.iceTiles = []; levelData.jumpWalls = [];
-      levelData.enemies = []; levelData.enemyGrid = null;
+      levelData.enemies = []; levelData.enemyGrid = null; levelData._enemySwitchCell = null;
     }
 
     function levelSize(levelNum) {
@@ -927,11 +929,30 @@
       return entry;
     }
 
-    function addBoostTile(x, z) {
-      const tile = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.04, 20), boostMat);
-      tile.position.set(x, 0.01, z);
-      levelGroup.add(tile);
-      const entry = { x, z, radius: 0.28, last: 0 };
+    function addBoostTile(x, z, dx = 0, dz = 1) {
+      // Wipeout-style directional boost: a luminous chevron arrow embedded in the
+      // floor.  The gameplay direction is stored with the tile so the boost always
+      // launches the ball down the intended runway, not merely in its current heading.
+      const len = Math.hypot(dx, dz) || 1;
+      dx /= len; dz /= len;
+      const arrow = new THREE.Group();
+      const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.035, 0.52), boostMat);
+      shaft.position.z = -0.05;
+      arrow.add(shaft);
+      const head = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.34, 4), boostMat);
+      head.rotation.x = Math.PI / 2;
+      head.position.z = 0.34;
+      arrow.add(head);
+      // A second translucent chevron makes the direction readable at speed.
+      const glow = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.42, 4), boostGlowMat);
+      glow.rotation.x = Math.PI / 2;
+      glow.position.z = 0.34;
+      glow.scale.set(1, 0.18, 1);
+      arrow.add(glow);
+      arrow.rotation.y = Math.atan2(dx, dz);
+      arrow.position.set(x, 0.045, z);
+      levelGroup.add(arrow);
+      const entry = { x, z, dx, dz, radius: 0.48, last: 0, mesh: arrow };
       levelData.boostTiles.push(entry);
       return entry;
     }
@@ -946,140 +967,150 @@
     }
 
     // -- CHASER ENEMY ("rolly cube") helpers ------------------------------
-    // Find a dead-end alcove recess just off the corridor, deep enough that the
-    // player won't trip the trigger at spawn but close to the route it sits on,
-    // so the cube is actually encountered as the player travels through.
-    function findAlcoveCell(maze, rng) {
-      const size = maze.grid.length;
-      const crit = maze.critPath || maze.path;
-      let best = null, bestScore = -1e9;
-      for (let r = 1; r < size - 1; r++) {
-        for (let c = 1; c < size - 1; c++) {
-          if (maze.grid[r][c] !== 0) continue;
-          if (r === 1 && c === 1) continue;
-          if (maze.goalCell[0] === c && maze.goalCell[1] === r) continue;
-          let open = 0;
-          for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
-            if (maze.grid[r + dy] && maze.grid[r + dy][c + dx] === 0) open++;
-          }
-          if (open !== 1) continue; // must be a true dead-end alcove
-          const dStart = Math.abs(c - 1) + Math.abs(r - 1);
-          if (dStart < 4) continue; // not too close to spawn
-          const dPath = distToPath(crit, r, c);
-          if (dPath > 2) continue;  // must branch straight off the player's route
-          // Prefer an alcove that hangs off the route (dPath 1) and lies a good
-          // way into the maze so it wakes mid-run, not at spawn.
-          const reach = 2 - dPath;
-          const score = reach * 1000 + dStart * 1 + rng() * 2;
-          if (score > bestScore) { bestScore = score; best = { r, c }; }
+    // -------------------------------------------------------------------------
+    // FAIR ENEMY PLACEMENT
+    // -------------------------------------------------------------------------
+    // The player's critical route is sacred. Enemies may create pressure in side
+    // branches, but they are NEVER allowed to enter the solution corridor, sit
+    // beside it, camp a required interaction, or start close enough to the goal
+    // to deny the finish. This gives every level a provable escape route.
+    function addProtectedRing(set, r, c, rad = 1) {
+      for (let dr = -rad; dr <= rad; dr++) {
+        for (let dc = -rad; dc <= rad; dc++) {
+          set.add((r + dr) + ',' + (c + dc));
         }
       }
-      if (best) return best;
-      // Fallback: any open cell off the route, not the spawn/goal.
-      for (let r = 1; r < size - 1; r++) {
-        for (let c = 1; c < size - 1; c++) {
-          if (maze.grid[r][c] !== 0) continue;
-          if (r === 1 && c === 1) continue;
-          if (maze.goalCell[0] === c && maze.goalCell[1] === r) continue;
-          const dStart = Math.abs(c - 1) + Math.abs(r - 1);
-          if (dStart >= 4) return { r, c };
-        }
-      }
-      return { r: 1, c: 1 }; // absolute last resort (should never happen)
     }
 
-    // Build the set of maze cells the enemy cube is forbidden from entering.
-    // This is the whole critical route to the goal (plus the start cell), so the
-    // solution is always clear and the goal is always reachable.
-    function buildEnemyNoGo(maze) {
+    function getEnemySafetySet(maze, portalA, portalB, switchCell, switchCell2) {
       const set = new Set();
-      const crit = maze.critPath || maze.path;
-      if (crit) for (const [c, r] of crit) set.add(r + ',' + c);
-      set.add('1,1'); // the entrance — never let a cube camp your spawn
+      const crit = maze.critPath || maze.path || [];
+
+      // One-cell safety lane around the complete winning route. With a cell size
+      // of 1.2 and a catch radius < 0.7, this guarantees the enemy cannot occupy
+      // or physically block the player's route.
+      for (const [c, r] of crit) addProtectedRing(set, r, c, 1);
+
+      // Make all required interactions generous safe zones.
+      addProtectedRing(set, 1, 1, 2); // spawn
+      if (maze.goalCell) addProtectedRing(set, maze.goalCell[1], maze.goalCell[0], 3);
+      for (const pc of [portalA, portalB]) if (pc) addProtectedRing(set, pc[1], pc[0], 2);
+      if (switchCell) addProtectedRing(set, switchCell[1], switchCell[0], 2);
+      if (switchCell2) addProtectedRing(set, switchCell2[1], switchCell2[0], 2);
       return set;
     }
 
-    // The cells a chasing cube must NEVER camp: the entrance, the colour-press
-    // switch, the portals, and the goal. During an on-grid pursuit the cube is
-    // otherwise free to chase anywhere (including the solution route) — that is
-    // what lets a woken sleeper actually hunt you down instead of stalling at
-    // the edge of its alcove. The full route ban above still applies to the
-    // return-home/off-grid behaviour.
-    function buildEnemyProtect(maze, portalA, portalB, switchCell) {
-      const set = new Set();
-      const addRing = (r, c, rad) => {
-        for (let dr = -rad; dr <= rad; dr++) for (let dc = -rad; dc <= rad; dc++) set.add((r + dr) + ',' + (c + dc));
-      };
-      addRing(1, 1, 1); // the entrance (and the corridor cells right outside it)
-      for (const pc of [portalA, portalB]) if (pc) addRing(pc[1], pc[0], 2);
-      if (switchCell) addRing(switchCell[1], switchCell[0], 1);
-      if (maze.goalCell) addRing(maze.goalCell[1], maze.goalCell[0], 1);
-      return set;
+    // Manhattan distance on the maze grid, used to keep enemy spawns away from
+    // the start and finish and to distribute multiple sleepers across the level.
+    function mazeDistance(grid, a, b) {
+      const size = grid.length;
+      const q = [[a[0], a[1]]];
+      const dist = Array(size).fill(null).map(() => Array(size).fill(-1));
+      dist[a[1]][a[0]] = 0;
+      let head = 0;
+      while (head < q.length) {
+        const [c, r] = q[head++];
+        if (c === b[0] && r === b[1]) return dist[r][c];
+        for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+          const nc = c + dx, nr = r + dy;
+          if (nc < 0 || nc >= size || nr < 0 || nr >= size) continue;
+          if (grid[nr][nc] !== 0 || dist[nr][nc] !== -1) continue;
+          dist[nr][nc] = dist[r][c] + 1;
+          q.push([nc, nr]);
+        }
+      }
+      return Infinity;
     }
 
-    // Place sleeping cubes in maze dead ends for levels 15+. A dead end is an
-    // open cell with exactly one open neighbour — a terminal alcove. Cubes are
-    // kept OFF the critical route / goal / portal areas so they can never camp
-    // the way forward, then hidden in the alcoves to wake on proximity.
-    function placeDeadEndEnemies(maze, portalA, portalB, levelNum, cell, centerCol) {
+    // Find a genuinely optional side-branch cell. Candidates must be outside the
+    // protected solution lane and comfortably distant from both ends of the level.
+    function findFairEnemyCandidates(maze, levelNum, count, portalA, portalB, switchCell, switchCell2) {
       const grid = maze.grid;
       const size = grid.length;
-      const count = Math.min(2 + Math.floor((levelNum - 15) / 3), 5);
-      if (count <= 0) return;
+      const safety = getEnemySafetySet(maze, portalA, portalB, switchCell, switchCell2);
+      const start = [1, 1];
+      const goal = maze.goalCell;
+      const candidates = [];
+      const minStart = Math.max(6, Math.floor(size * 0.42));
+      const minGoal = Math.max(5, Math.floor(size * 0.30));
 
-      // Cells we must not threaten: the solution route and its immediate
-      // neighbours, the start, the goal, and the portals.
-      const exclude = new Set();
-      const crit = maze.critPath || maze.path;
-      if (crit) {
-        for (const [c, r] of crit) {
-          for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-            exclude.add((r + dr) + ',' + (c + dc));
-          }
-        }
-      }
-      if (maze.goalCell) {
-        for (let dr = -1; dr <= 2; dr++) for (let dc = -1; dc <= 2; dc++) {
-          exclude.add((maze.goalCell[1] + dr) + ',' + (maze.goalCell[0] + dc));
-        }
-      }
-      for (const pc of [portalA, portalB]) {
-        if (!pc) continue;
-        for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
-          exclude.add((pc[1] + dr) + ',' + (pc[0] + dc));
-        }
-      }
-      const startKey = [1, 1]; // maze entrance
-      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-        exclude.add((startKey[1] + dr) + ',' + (startKey[0] + dc));
-      }
-
-      // Gather dead-end alcoves.
-      const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
-      const deadends = [];
-      // Start the walk from any open cell to only keep REACHABLE alcoves.
       for (let r = 1; r < size - 1; r++) {
         for (let c = 1; c < size - 1; c++) {
           if (grid[r][c] !== 0) continue;
-          if (exclude.has(r + ',' + c)) continue;
+          if (safety.has(r + ',' + c)) continue;
+
+          // Prefer terminal or near-terminal branches: an enemy here can wake up
+          // and create tension without ever standing in the mandatory corridor.
           let open = 0;
-          for (const [dx, dy] of dirs) if (grid[r + dy][c + dx] === 0) open++;
-          if (open === 1) deadends.push([c, r]);
+          for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+            if (grid[r + dy] && grid[r + dy][c + dx] === 0) open++;
+          }
+          const startDist = mazeDistance(grid, start, [c,r]);
+          const goalDist = mazeDistance(grid, [c,r], goal);
+          if (!isFinite(startDist) || !isFinite(goalDist)) continue;
+          if (startDist < minStart || goalDist < minGoal) continue;
+
+          // Strong preference for dead ends, but allow a small number of deep
+          // side-branch cells on large boards when there aren't enough dead ends.
+          const branchScore = open === 1 ? 1000 : (open === 2 ? 140 : 0);
+          const depthScore = Math.min(startDist, goalDist) * 4;
+          const routeClearance = distToPath(maze.path, r, c);
+          const score = branchScore + depthScore + routeClearance * 30 - Math.abs(startDist - goalDist) * 0.15;
+          candidates.push({ c, r, score });
         }
       }
 
-      // Deterministic shuffle per level, then place the sleeper cubes.
-      const rng = makeRng(levelNum, 900);
-      for (let i = deadends.length - 1; i > 0; i--) {
-        const j = Math.floor(rng() * (i + 1));
-        [deadends[i], deadends[j]] = [deadends[j], deadends[i]];
+      candidates.sort((a,b) => b.score - a.score || a.r - b.r || a.c - b.c);
+
+      const picked = [];
+      for (const cand of candidates) {
+        // Keep sleepers separated so two enemies can never form a soft blockade
+        // inside the same branch.
+        let tooClose = false;
+        for (const p of picked) {
+          if (Math.abs(p.c - cand.c) + Math.abs(p.r - cand.r) < 5) {
+            tooClose = true; break;
+          }
+        }
+        if (tooClose) continue;
+        picked.push(cand);
+        if (picked.length >= count) break;
       }
-      const picked = deadends.slice(0, Math.min(count, deadends.length));
-      for (const [c, r] of picked) {
-        const x = maze.centerX + (c - centerCol) * cell;
-        const z = (r - centerCol) * cell;
+      return { picked, safety };
+    }
+
+    // Build the set of cells an enemy is forbidden to occupy.
+    function buildEnemyNoGo(maze, portalA, portalB, switchCell, switchCell2) {
+      return getEnemySafetySet(maze, portalA, portalB, switchCell, switchCell2);
+    }
+
+    // While actively chasing, use the same protected lane. This is deliberately
+    // stricter than merely protecting the exact route: it prevents a cube from
+    // parking one cell beside a corridor and physically pinning the player.
+    function buildEnemyProtect(maze, portalA, portalB, switchCell, switchCell2) {
+      return getEnemySafetySet(maze, portalA, portalB, switchCell, switchCell2);
+    }
+
+    // Place sleeping cubes only where the level's geometry proves they cannot
+    // interfere with the mandatory route. A level is allowed to have FEWER enemies
+    // than the nominal count when the generated maze does not provide enough fair
+    // positions. Difficulty never overrides solvability.
+    function placeDeadEndEnemies(maze, portalA, portalB, levelNum, cell, centerCol, switchCell2) {
+      const nominal = Math.min(2 + Math.floor((levelNum - 15) / 3), 5);
+      if (nominal <= 0) return 0;
+
+      const { picked } = findFairEnemyCandidates(
+        maze, levelNum, nominal, portalA, portalB,
+        levelData._enemySwitchCell || null,
+        switchCell2 || null
+      );
+
+      for (const p of picked) {
+        const x = maze.centerX + (p.c - centerCol) * cell;
+        const z = (p.r - centerCol) * cell;
         addEnemyMesh(x, z, levelNum, 'sleeper');
       }
+      return picked.length;
     }
 
     function addEnemyMesh(x, z, levelNum, mode) {
@@ -1325,7 +1356,10 @@
       // the winning run and its dot only exists PAST the blue gate, so the
       // sequence is always blue dot → blue gate → green dot → green gate → goal.
       let barrierCell2 = null, switchCell2 = null, switchMaze2 = null;
-      if (levelNum >= 20) {
+      // The second lock is deliberately held back until the twin-island phase.
+      // Levels 20-23 remain fully playable single-board levels; this avoids a
+      // procedural key/gate placement ever swallowing the transition into 20-23.
+      if (levelNum >= 24) {
         const pi2 = Math.min(mazeA.path.length - 1, Math.floor(mazeA.path.length * 0.85));
         if (blueGateIdx !== null && pi2 > blueGateIdx + 2 && pi2 < mazeA.path.length - 2) {
           barrierCell2 = mazeA.path[pi2];
@@ -1352,7 +1386,7 @@
         { frac: 0.86 },
       ];
       const jwCount = levelNum >= 27 ? 3 : (levelNum >= 22 ? 2 : (levelNum >= 16 ? 1 : 0));
-      const pi2Idx = (levelNum >= 20 && barrierCell2 && mazeA.path.length)
+      const pi2Idx = (levelNum >= 24 && barrierCell2 && mazeA.path.length)
         ? Math.floor(mazeA.path.length * 0.85) : null;
       if (jwCount > 0 && mazeA.path.length > 16) {
         const resv = new Set();
@@ -1698,7 +1732,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
         addColorDot(sx, sz, 'blue');
       }
 
-      // -- green lock-and-key (levels 20+) ----------------------------------
+      // -- green lock-and-key (twin-island phase, 24+) ----------------------
       // barrierCell2 / switchCell2 were chosen earlier (right after the blue
       // switch): a green barrier sits at ~85% of the route and its green dot
       // lives in an off-route detour reachable only AFTER the blue gate opens.
@@ -1792,7 +1826,9 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
           for (let k = 0; k < n; k++) {
             const c = pA[tail + k];
             const [x, z] = cellToWorld(mazeA, c[0], c[1]);
-            addBoostTile(x, z);
+            const next = pA[tail + k + 1] || c;
+            const dx = next[0] - c[0], dz = next[1] - c[1];
+            addBoostTile(x, z, dx, dz);
           }
           // Reserve the whole runway + braking zone so ice / later tiles can't
           // overlap the momentum trap.
@@ -1812,7 +1848,9 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
               const key = 'A:' + c[1] + ',' + c[0];
               if (gadgetCells.has(key)) continue;
               const [x, z] = cellToWorld(mazeA, c[0], c[1]);
-              addBoostTile(x, z);
+              const next = mazeA.path[i + 1] || c;
+              const dx = next[0] - c[0], dz = next[1] - c[1];
+              addBoostTile(x, z, dx, dz);
               gadgetCells.add(key);
             }
             // Reserve the whole straight so a later run (ice, extra boosts) can't
@@ -1905,19 +1943,30 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       // the maze (see buildEnemyProtect): only the handful of critical cells —
       // spawn, switch, portals, goal — stay off-limits to them, so a cube can
       // never camp the way forward even though it now hunts you down openly.
-      levelData.enemyNoGo = (levelNum >= 15)
-        ? buildEnemyNoGo(mazeA)
+      // Enemy fairness is level-aware. The safety lane protects the entire
+      // guaranteed solution and all required interactions, so a chaser can never
+      // occupy the player's mandatory corridor.
+      levelData._enemySwitchCell = switchCell;
+      levelData.enemyNoGo = (levelNum >= 8)
+        ? buildEnemyNoGo(mazeA, portalA, portalB, switchCell, switchCell2)
         : null;
-      levelData.enemyProtect = (levelNum >= 15)
-        ? buildEnemyProtect(mazeA, portalA, portalB, switchCell)
+      levelData.enemyProtect = (levelNum >= 8)
+        ? buildEnemyProtect(mazeA, portalA, portalB, switchCell, switchCell2)
         : null;
       if (levelNum >= 15) {
-        placeDeadEndEnemies(mazeA, portalA, portalB, levelNum, cell, centerCol);
+        placeDeadEndEnemies(mazeA, portalA, portalB, levelNum, cell, centerCol, switchCell2);
       } else if (levelNum >= 8) {
-        const e = addEnemyMesh(levelData.startPos.x, levelData.startPos.z, levelNum, 'chase');
-        const sr = Math.round(levelData.startPos.z / cell + centerCol);
-        const sc = Math.round((levelData.startPos.x - mazeA.centerX) / cell + centerCol);
-        e.curlr = sr; e.curlc = sc;
+        // Early chaser levels deliberately start in a deep optional branch rather
+        // than on the player's spawn. This preserves the pressure without creating
+        // an unavoidable opening hit or a blocked first corridor.
+        const fair = findFairEnemyCandidates(mazeA, levelNum, 1, portalA, portalB, switchCell, switchCell2);
+        if (fair.picked.length) {
+          const p = fair.picked[0];
+          const x = mazeA.centerX + (p.c - centerCol) * cell;
+          const z = (p.r - centerCol) * cell;
+          const e = addEnemyMesh(x, z, levelNum, 'chase');
+          e.curlr = p.r; e.curlc = p.c;
+        }
       }
 
       // Ball, enemies, and HUD setup follow. The board floats as a clean island
@@ -1952,7 +2001,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
             colorSwitches: levelData.colorSwitches.map(d => ({ x: d.x, z: d.z, color: d.color })),
             jumpPads: levelData.jumpPads.map(j => ({ x: j.x, z: j.z })),
             jumpWalls: levelData.jumpWalls.map(jw => ({ x: jw.x, z: jw.z })),
-            boostTiles: levelData.boostTiles.map(t => ({ x: t.x, z: t.z })),
+            boostTiles: levelData.boostTiles.map(t => ({ x: t.x, z: t.z, dx: t.dx, dz: t.dz })),
             iceTiles: levelData.iceTiles.map(t => ({ x: t.x, z: t.z })),
             portals: levelData.portals.map(p => ({ x: p.x, z: p.z, pair: p.pair })),
             enemyGrid: levelData.enemyGrid,
@@ -2012,7 +2061,7 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
       }
 
       // Boost strips & ice patches
-      for (let bData of data.boostTiles || []) addBoostTile(bData.x, bData.z);
+      for (let bData of data.boostTiles || []) addBoostTile(bData.x, bData.z, bData.dx || 0, bData.dz || 1);
       for (let iData of data.iceTiles || []) addIceTile(iData.x, iData.z);
 
       // Portals
@@ -2522,7 +2571,11 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
         // the finish line but can't deny the 1s hold, so the level always ends.
         const dNow = Math.hypot(e.x - ball.position.x, e.z - ball.position.z);
         const atGoal = Math.hypot(ball.position.x - levelData.goalPos.x, ball.position.z - levelData.goalPos.z) < 1.0;
-        if (dNow < r && !atGoal) {
+        // Final fairness guard: a protected-cell state can never produce a catch.
+        const pc = Math.round((ball.position.x - levelData.enemyACenterX) / cell + centerCol);
+        const pr = Math.round(ball.position.z / cell + centerCol);
+        const playerProtected = levelData.enemyProtect && levelData.enemyProtect.has(pr + ',' + pc);
+        if (dNow < r && !atGoal && !playerProtected) {
           triggerParticles('death', e.mesh.position);
           sfx('catch');
           showOverlay('😱 The cube caught you!', 'Roll away before it strikes!', 1.5);
@@ -2715,21 +2768,26 @@ const islandDefs = dual ? [mazeA, mazeB] : [mazeA];
         }
       }
 
-      // Boost strips fling the ball forward along its heading (capped + throttled
-      // so a ball skimming a strip gets one kick, not a per-frame ramp-up).
+      // Wipeout-style boost strips: crossing an arrow gives an immediate,
+      // substantial forward launch in the arrow's direction.  It works even from
+      // a near-standstill, and successive arrows chain into a genuine speed lane.
       {
         const tNow = performance.now();
         for (const t of levelData.boostTiles) {
           const bdx = ball.position.x - t.x, bdz = ball.position.z - t.z;
-          if (bdx*bdx + bdz*bdz < (0.28 + CONFIG.ballRadius) * (0.28 + CONFIG.ballRadius)) {
+          const hitR = t.radius + CONFIG.ballRadius;
+          if (bdx*bdx + bdz*bdz < hitR * hitR && tNow - (t.last || 0) > 260) {
+            t.last = tNow;
             const sp = Math.hypot(velocity.x, velocity.z);
-            if (sp > 0.05 && sp < 5.5 && tNow - (t.last || 0) > 250) {
-              t.last = tNow;
-              const push = Math.pow(2.2, dt);
-              const ns = Math.min(sp * push, 5.5);
-              velocity.x *= ns / sp; velocity.z *= ns / sp;
-              triggerParticles('switch', ball.position, 0x22ff88);
-              sfx('pickup');
+            const launchSpeed = Math.min(10.5, Math.max(7.0, sp + 5.5));
+            velocity.x = t.dx * launchSpeed;
+            velocity.z = t.dz * launchSpeed;
+            greenBoost = Math.max(greenBoost, 0.38);
+            triggerParticles('boost', ball.position, 0x22ff88);
+            sfx('boost');
+            if (t.mesh) {
+              t.mesh.scale.set(1.22, 1.22, 1.22);
+              setTimeout(() => { if (t.mesh) t.mesh.scale.set(1,1,1); }, 110);
             }
           }
         }

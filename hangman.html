@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -98,6 +98,7 @@
   .panel.artist{border-color:var(--red); box-shadow:5px 5px 0 rgba(180,58,42,.3)}
   .muted{color:var(--mute); font-size:1rem}
   .centre{text-align:center}
+  .tiny{font-size:.8rem; color:var(--mute)}
   .secretWord{filter:blur(10px); cursor:pointer; user-select:none; white-space:nowrap; transition:filter .15s}
   .secretWord:hover{filter:blur(0)}
   #mask{font-family:'Caveat',cursive; font-size:2.8rem; letter-spacing:10px; text-align:center; min-height:54px; word-break:break-all; text-transform:uppercase}
@@ -121,8 +122,6 @@
   .tools{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px}
   .tools button{font-size:1rem; padding:.4rem .85rem}
   .tools button.on{background:var(--ink); color:var(--paper2)}
-  .tools button.stamp{border:3px dashed var(--red); color:var(--red)}
-  .tools button.stamp.on{background:var(--red); color:#fff}
   .swatch{width:26px; height:26px; border-radius:50%; border:2.5px solid var(--ink); cursor:pointer; box-shadow:2px 2px 0 rgba(29,20,8,.5)}
   .swatch.on{outline:3.5px solid var(--gold)}
   input[type=range]{width:90px; accent-color:var(--ink)}
@@ -131,16 +130,18 @@
     border-radius:16px 5px 16px 5px/5px 16px 5px 14px; padding:3px 12px; font-size:1.05rem;
     background:var(--paper2); box-shadow:3px 3px 0 rgba(29,20,8,.4); text-transform:uppercase}
   .chip.artist{background:var(--gold); transform:rotate(-1deg) scale(1.04)}
+  .chip.drawer{background:var(--blue); color:var(--paper2)}
   /* ---------- end overlay ---------- */
+  #endDim{position:fixed; inset:0; background:rgba(29,20,8,.62); z-index:30; pointer-events:none; display:none}
   #endOv{
-    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
-    background:rgba(29,20,8,.42); z-index:40;
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:40;
   }
   #endOv .card{background:var(--paper2); border:3px solid var(--ink);
     border-radius:255px 15px 225px 15px/15px 225px 15px 255px; box-shadow:8px 8px 0 rgba(29,20,8,.85);
     padding:26px 40px; text-align:center; max-width:540px; animation:rise .3s ease-out}
   #endOv h2{font-family:'Rock Salt',cursive; font-size:3.2rem; margin:0}
   #endOv .word{font-family:'Caveat',cursive; font-size:2.3rem; color:var(--green); text-transform:uppercase}
+  #endOv .byline{font-family:'Caveat',cursive; font-size:1.7rem; color:var(--purple); margin:4px 0 10px}
   #endOv .btns{display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap}
   /* ---------- help modal ---------- */
   #help{position:fixed; inset:0; background:rgba(29,20,8,.55); display:flex; align-items:center; justify-content:center; z-index:60; padding:16px}
@@ -149,6 +150,14 @@
     max-width:600px; width:92%; padding:20px 28px; max-height:86vh; overflow:auto}
   #help h2{font-size:2.4rem; margin:0 0 8px; text-decoration:underline wavy var(--gold) 2px; text-underline-offset:6px}
   #help p{margin:8px 0; font-size:1.05rem}
+  /* ---------- confetti ---------- */
+  .confettiBox{position:fixed; inset:0; pointer-events:none; z-index:30; overflow:hidden}
+  .confettiBox i{position:absolute; top:-24px; display:block; border-radius:2px; animation-name:fall; animation-timing-function:linear; animation-iteration-count:1; animation-fill-mode:forwards}
+  @keyframes fall{to{transform:translateY(112vh) rotate(780deg)}}
+  .confettiLab{position:fixed; top:12%; left:50%; transform:translateX(-50%); font-family:'Rock Salt',cursive;
+    font-size:2.4rem; color:var(--gold); text-shadow:3px 3px 0 var(--ink); white-space:nowrap;
+    pointer-events:none; z-index:30; animation:pop .5s ease-out}
+  @keyframes pop{from{transform:translateX(-50%) scale(.35); opacity:0}to{transform:translateX(-50%) scale(1); opacity:1}}
 </style>
 </head>
 <body>
@@ -169,9 +178,10 @@
     <div class="muted centre" id="lobbyMsg"></div>
     <div class="how">
       <b>How the class plays</b><br>
-      ✎ Every player takes a turn being the word-setter &amp; artist — picked at random each round.<br>
-      ? The rest of the room guesses one letter at a time, taking turns.<br>
+      ✎ Every player takes a turn being the word-setter &amp; artist — rotated fairly so everyone goes before anyone repeats.<br>
+      ✏ The rest of the room guesses one letter at a time, taking turns — the order keeps rotating between rounds so no one jumps the queue.<br>
       ✕ Eight wrong guesses and the drawing is hanged — the setter wins that round.<br>
+      ✏ Each wrong guess, a player is picked fairly to draw the next body part — everyone draws before anyone repeats.<br>
       <span class="muted">Needs internet (uses the free PeerJS cloud). The host shares the 5-digit code; everyone joins on their own device.</span>
     </div>
   </div>
@@ -205,7 +215,7 @@
       <div class="panel artist hidden" id="deskArtist">
         <h3 id="artistTitle">You're the word-setter &amp; artist!</h3>
         <div id="wordPick">
-          <div class="muted centre" style="color:var(--red)"><b>Step 1:</b> ⌑ stamp the gallows  ·  <b>Step 2:</b> type your secret word  ·  <b>Step 3:</b> hit start guessing!</div>
+          <div class="muted centre" style="color:var(--red)"><b>Step 1:</b> type your secret word · <b>Step 2:</b> hit start guessing!</div>
           <input type="password" id="wordIn" maxlength="12" placeholder="secret word (3–12 letters)" autocomplete="off" autocapitalize="off" spellcheck="false">
           <div class="muted centre" style="color:var(--red)">Ssshh — keep it secret! letters hide as you type; hover the box to peek &amp; check your spelling.</div>
           <div class="tools" style="justify-content:center">
@@ -215,12 +225,11 @@
         </div>
         <div class="muted centre hidden" id="artistPlayHint"></div>
         <button class="primary hidden" id="contBtn">✎ finished drawing — early!</button>
+        <div id="drawTools">
         <div class="tools" id="toolRow">
           <button id="tBrush" class="on">✎ brush</button>
           <button id="tEraser">◻ eraser</button>
-          <button id="tStamp" class="stamp">⌐ gallows stamp</button>
           <button id="undoBtn">↶ undo</button>
-          <button id="blankBtn">✕ blank paper</button>
         </div>
         <div class="tools">
           <span class="swatch on" data-c="#26221c" style="background:#26221c"></span>
@@ -242,7 +251,8 @@
           <span class="swatch" data-c="#fffdf3" style="background:#fffdf3"></span>
           <input type="range" id="sizeIn" min="2" max="16" value="6">
         </div>
-        <div class="muted" id="stampHint">stamp the gallows — the noose ring is the swing pivot. it fills the whole page height.</div>
+        <div class="muted" id="stampHint">the gallows is placed automatically — just ink the figure, then start guessing!</div>
+        </div>
       </div>
 
       <div class="panel hidden" id="deskGuess">
@@ -250,6 +260,11 @@
         <div id="mask">_ _ _ _ _</div>
         <div class="muted centre" id="turnLbl"></div>
         <div id="kb"></div>
+        <div class="muted centre" style="margin-top:10px">or go for the whole word — get it right and it's a party!</div>
+        <div class="tools" style="justify-content:center">
+          <input type="text" id="wordGuessIn" maxlength="12" placeholder="whole word" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:170px;font-size:1.25rem">
+          <button id="wordGuessBtn" class="primary">guess word</button>
+        </div>
       </div>
 
       <div class="panel hidden" id="deskWait">
@@ -271,10 +286,12 @@
 </div>
 
 <!-- ============ END OVERLAY ============ -->
+<div id="endDim"></div>
 <div id="endOv" class="hidden">
   <div class="card">
     <h2 id="endTitle">Hooray!!</h2>
     <div class="word" id="endWord">the word was ———</div>
+    <div class="byline" id="endBy"></div>
     <div class="muted" id="endSub">hit next round to play again — or leave the room!</div>
     <div class="btns">
       <button class="primary" id="nextBtn">next round</button>
@@ -289,9 +306,9 @@
   <div class="card">
     <h2>How Hang Something? works</h2>
     <p><b>Hosting.</b> The host starts a room and shares the 5-digit code (✂ copy). Everyone joins from their own computer.</p>
-    <p><b>Random word-setter.</b> Each round a <i>random</i> player becomes the word-setter &amp; artist — not just the host. They pick a secret word and draw the hanging figure. The word box hides what you type — hover to peek and check your spelling, but keep your screen away from other players!</p>
-    <p><b>Guess one-by-one.</b> The guessing team takes turns — the game taps each player in turn for one letter. Used letters are crossed off the board.</p>
-    <p><b>Drawing.</b> Stamp the gallows (it fills the page; the noose loops the dashed ring — that's the swing pivot) then ink the figure with brush, eraser and colours. With each wrong guess the next body-part is checked off — get creative with every piece.</p>
+    <p><b>Fair word-setter rotation.</b> Players take it in turns to be the word-setter &amp; artist — a fair rotation means everyone gets a turn before anyone repeats, instead of the same person being picked twice. They pick a secret word and draw the hanging figure. The word box hides what you type — hover to peek and check your spelling, but keep your screen away from other players!</p>
+    <p><b>Guess one-by-one.</b> The guessing team takes turns — the game taps each player in turn for one letter, and that turn order <i>carries on across rounds</i>, so nobody gets asked twice while someone else is still waiting for a guess.</p>
+    <p><b>Drawing.</b> The gallows is placed automatically each round (the noose is the swing pivot). With each wrong guess a player is picked on a <i>fair rotation</i> to draw the next body part — everyone gets a turn before anyone is picked again. The chosen drawer gets 20 seconds to draw (and can hit "finished drawing" early), while the rest of the room can start guessing again after just 6 seconds.</p>
     <p><b>Win!</b> All letters found and you take the round — the host starts the next one.</p>
     <p><b>Lose.</b> Wrong 8 times and the drawing drops &amp; swings from the noose — the setter wins the round.</p>
     <div class="centre"><button class="primary" id="helpClose">got it!</button></div>
@@ -301,6 +318,7 @@
 <script>
 /* ================= utils ================= */
 const W=960, H=640, PREFIX='hangsmth-';
+const DRAW_SECONDS=20, UNLOCK_SECONDS=6;
 const PARTS=['head','body','left arm','right arm','left leg','right leg','face & hands','the drop!'];
 const WORDS=['pencil','galaxy','banana','wizard','jungle','rocket','muffin','castle','dragon','pickle','monkey','guitar','island','kitten','lantern','marble','noodle','orange','pirate','quilt','rabbit','saddle','tomato','umbrella','violin','walrus','yogurt','zephyr','anchor','basket','cactus','donkey','feather','goblin','hammer','icicle','jigsaw','kettle','lizard','magnet'];
 const $=id=>document.getElementById(id);
@@ -309,11 +327,44 @@ function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 
 /* ================= state ================= */
-let peer=null, conns=[], myId=null, myName='?', isHost=false, roomCode='';
-let GS={phase:'lobby',round:0,artistId:null,players:[],strikes:0,guessed:[],mask:'',turnId:null,pivot:null,win:null,word:'',pause:false,pauseStart:null};
-let order=[], ops=[], wins={};
+let peer=null, conns=[], myId=null, myName='', isHost=false, roomCode='';
+let GS={phase:'lobby',round:0,artistId:null,drawerId:null,players:[],strikes:0,guessed:[],mask:'',turnId:null,pivot:null,win:null,word:'',pause:false,pauseStart:null};
+let ops=[], wins={};
+let artistQueue=[], guessRing=[], guessNextId=null;
+let drawerQueue=[], lastDrawerId=null;
 let tool='brush', colour='#26221c', drawing=false, curPts=[], ghost=null;
-let hangOffset=0, hanging=false, overRoundHandled=0, pauseTimer=null, pauseCountdown=null;
+let hangOffset=0, hanging=false, overRoundHandled=0, pauseTimer=null, pauseCountdown=null, drawEndTimer=null;
+let endByPlayer='';
+let prevDrawerId=null, drawCheer='';
+const DRAWCHEERS=[
+  'make it your masterpiece!',
+  'every stroke tells a story — go wild!',
+  'no rules, just markers!',
+  'the weirder the better!',
+  'show us your style!',
+  'give it some personality!',
+  'draw big & proud!',
+  'your hands, your art!',
+  'improvise like a pro!',
+  'make the mayor proud of that arm!',
+  'draw it like nobody is watching!',
+  'go big or go home!',
+  'stretch those artistic legs!',
+  'add a splash of flair!',
+  'you have creative powers — use them!',
+  'draw something legendary!',
+  'this is your canvas — own it!',
+  'quirky is a compliment here!',
+  'yours is about to be one of a kind!',
+  'knock our socks off!'
+];
+const pickCheer=()=>DRAWCHEERS[Math.floor(Math.random()*DRAWCHEERS.length)];
+const refreshCheer=()=>{
+  if(GS.drawerId!==prevDrawerId){
+    prevDrawerId=GS.drawerId;
+    drawCheer=GS.drawerId===myId? pickCheer() : '';
+  }
+};
 
 /* layers */
 const cv=$('cv'), ctx=cv.getContext('2d');
@@ -338,8 +389,8 @@ function inkLine(c,x1,y1,x2,y2,rnd,w,col){
   }
   c.globalAlpha=1;
 }
-const DEFAULT_PIVOT={x:W*0.66,y:H*0.21};
-const clampPivot=p=>({x:clamp(p.x,400,W-70), y:clamp(p.y,96,H*0.5)});
+const DEFAULT_PIVOT={x:675,y:H*0.21};
+const clampPivot=p=>({x:clamp(p.x,400,W-70), y:clamp(p.y,100,190)});
 function drawGallows(c,pivot,seed){
   const rnd=mulberry32(seed), topY=26, baseY=H-26, poleX=pivot.x-300;
   inkLine(c,poleX-120,baseY,poleX+330,baseY,rnd,8);          /* base */
@@ -373,20 +424,11 @@ function render(){
   if(hangOffset||hanging){ ctx.save(); ctx.translate(GS.pivot?GS.pivot.x:0, (GS.pivot?GS.pivot.y:0)+hangOffset); ctx.translate(-(GS.pivot?GS.pivot.x:0),-(GS.pivot?GS.pivot.y:0)); ctx.drawImage(figureInk,0,0); ctx.restore(); }
   else ctx.drawImage(figureInk,0,0);
   if(GS.pivot) drawNoose(ctx, GS.pivot.x, GS.pivot.y+hangOffset);
-  if(GS.phase==='picking' && !GS.pivot){
-    ctx.save(); ctx.setLineDash([7,7]); ctx.strokeStyle='#c98f8b'; ctx.lineWidth=3;
-    ctx.beginPath(); ctx.arc(DEFAULT_PIVOT.x,DEFAULT_PIVOT.y,26,0,Math.PI*2); ctx.stroke(); ctx.restore();
-  }
-  if(tool==='stamp' && ghost && canDraw() && !GS.pivot){
-    const gp=clampPivot(ghost);
-    ctx.save(); ctx.globalAlpha=.32;
-    drawGallows(ctx,gp,7); drawNoose(ctx,gp.x,gp.y);
-    ctx.restore();
-  }
 }
 
 /* ================= networking ================= */
 function sendAll(d,except){ conns.forEach(c=>{ if(c.peer!==except && c.open) c.send(d); }); }
+function sendTo(id,d){ const c=conns.find(c=>c.peer===id); if(c&&c.open) c.send(d); }
 function sendHost(d){ if(conns[0]&&conns[0].open) conns[0].send(d); }
 function act(a){ if(isHost) applyHost(a,myId); else sendHost(a); }
 
@@ -416,7 +458,7 @@ function dropPlayer(id){
   conns=conns.filter(c=>c.peer!==id);
   if(isHost){
     GS.players=GS.players.filter(p=>p.id!==id);
-    if(GS.phase==='playing'){ order=order.filter(x=>x!==id); if(GS.turnId===id){ advanceTurn(); GS.pause=false; } if(GS.artistId===id){ toastAll('the artist left — new round!'); newRound(); return; } }
+    if(GS.phase==='playing'){ if(GS.artistId===id){ toastAll('the artist left — new round!'); newRound(); return; } if(GS.drawerId===id){ continueTurn(); return; } if(GS.turnId===id){ advanceTurn(); GS.pause=false; } }
     sendState();
   } else if(id===conns[0]?.peer || conns.length===0){
     alert('the host left the room.'); location.reload();
@@ -435,69 +477,151 @@ function applyHost(a,from){
       if(GS.phase!=='over') return;
       GS.round++; newRound(); break;
     case 'stamp':
-      if(from!==artist||(GS.phase!=='picking'&&GS.phase!=='playing')||GS.pivot) return;
-      ops.push({kind:'stamp',pivot:a.pivot,seed:a.seed});
-      GS.pivot=a.pivot; drawGallows(gallowsInk.getContext('2d'),a.pivot,a.seed); render();
-      sendAll({t:'opStamp',pivot:a.pivot,seed:a.seed}); sendState(); break;
-    case 'stroke':
-      if(from!==artist) return;
+      break; /* gallows is auto-placed — manual stamping removed */
+    case 'stroke':{
+      const drawer=GS.phase==='playing'?GS.drawerId:artist;
+      if(from!==drawer) return;
+      if(GS.phase==='playing'&&!GS.pause) return;
       ops.push({kind:'stroke',layer:a.layer,points:a.points,color:a.color,size:a.size,tool:a.tool});
-      sendAll({t:'opStroke',op:{kind:'stroke',layer:a.layer,points:a.points,color:a.color,size:a.size,tool:a.tool}},from); break;
-    case 'undo':
-      if(from!==artist) return;
-      ops.pop(); resyncOps(); break;
+      sendAll({t:'opStroke',op:{kind:'stroke',layer:a.layer,points:a.points,color:a.color,size:a.size,tool:a.tool}},from); break;}
+    case 'undo':{
+      const drawer=GS.phase==='playing'?GS.drawerId:artist;
+      if(from!==drawer) return;
+      for(let i=ops.length-1;i>=0;i--){ if(ops[i].kind!=='stamp'){ ops.splice(i,1); break; } }
+      resyncOps(); break;}
     case 'blank':
-      if(from!==artist||GS.phase!=='picking'||GS.pivot) return;
-      ops=[]; resyncOps(); break;
+      if(from!==artist||GS.phase!=='picking') return;
+      ops=ops.filter(op=>op.kind==='stamp'); resyncOps(); break;
     case 'setword':{
-      if(from!==artist||GS.phase!=='picking'||!GS.pivot) return;
+      if(from!==artist||GS.phase!=='picking') return;
       const w=(a.word||'').toUpperCase();
       if(!/^[A-Z]{3,12}$/.test(w)) return;
       GS.word=w; GS.mask=mask();
-      sendState(); toastAll('✎ the word is set — the artist will start guessing when they are done drawing!'); break;}
+      sendState(); toastAll('✎ the word is set — hit start guessing when the figure is ready!'); break;}
     case 'startguess':{
       if(from!==artist||GS.phase!=='picking'||!GS.word) return;
-      GS.guessed=[]; GS.strikes=0; GS.mask=mask(); GS.phase='playing'; GS.pause=false; GS.pauseStart=null; clearTimeout(pauseTimer);
-      order=shuffle(GS.players.filter(p=>p.id!==artist).map(p=>p.id));
-      GS.turnId=order[0]||null; hangOffset=0;
+      GS.guessed=[]; GS.strikes=0; GS.mask=mask(); GS.phase='playing'; GS.pause=false; GS.pauseStart=null; GS.drawerId=null; clearTimeout(pauseTimer); clearTimeout(drawEndTimer);
+      GS.turnId=pickNextGuesser(); hangOffset=0;
       sendState(); toastAll('round '+GS.round+' — guess away!'); break;}
     case 'guess':{
-      if(GS.phase!=='playing'||from!==GS.turnId) return;
+      if(GS.phase!=='playing') return;
       const L=(a.letter||'').toUpperCase();
       if(!/^[A-Z]$/.test(L)||GS.guessed.includes(L)) return;
+      if(GS.pause){ sendTo(from,{t:'toast',msg:'the figure is being drawn — hang on a moment…'}); return; }
+      if(from!==GS.turnId){ sendTo(from,{t:'toast',msg:'not your turn — '+nameOf(GS.turnId)+' is up.'}); return; }
       GS.guessed.push(L);
-      if(GS.word.includes(L)){ GS.mask=mask(); advanceTurn(); sendState(); checkWin(); }
+      if(GS.word.includes(L)){ GS.mask=mask(); sfxAll('good'); if(checkWin()) return; advanceTurn(); sendState(); }
       else{
-        GS.strikes++; GS.mask=mask();
-        if(GS.strikes>=8){ clearTimeout(pauseTimer); GS.pause=false; GS.pauseStart=null; sendState(); endRound(false); }
-        else{ GS.pause=true; GS.pauseStart=Date.now(); clearTimeout(pauseTimer); pauseTimer=setTimeout(()=>{ if(GS.pause) continueTurn(); },10000); sendState(); toastAll('✕ wrong ('+GS.strikes+'/8) — artist draws the '+PARTS[GS.strikes-1]+'!'); }
+        GS.strikes++; GS.mask=mask(); sfxAll('bad');
+        if(GS.strikes>=8){ clearTimeout(pauseTimer); clearTimeout(drawEndTimer); GS.pause=false; GS.pauseStart=null; GS.drawerId=null; sendState(); endRound(false); }
+        else{ beginDrawSession(); toastAll('✕ wrong ('+GS.strikes+'/8) — '+nameOf(GS.drawerId)+' draws the '+PARTS[GS.strikes-1]+'!'); }
+      }
+      break;}
+    case 'guessword':{
+      if(GS.phase!=='playing') return;
+      const Wg=(a.word||'').toUpperCase().replace(/[^A-Z]/g,'');
+      if(!Wg) return;
+      if(GS.pause){ sendTo(from,{t:'toast',msg:'the figure is being drawn — hang on a moment…'}); return; }
+      if(from!==GS.turnId){ sendTo(from,{t:'toast',msg:'not your turn — '+nameOf(GS.turnId)+' is up.'}); return; }
+      if(Wg===GS.word){
+        sfxAll('good');
+        endByPlayer=nameOf(from);
+        GS.mask=maskForFull();
+        sendAll({t:'confetti',by:nameOf(from)});
+        toastAll('🎉 '+nameOf(from)+' guessed the word — '+GS.word+'!');
+        clearTimeout(pauseTimer); clearTimeout(drawEndTimer); GS.pause=false; GS.pauseStart=null; GS.drawerId=null; sendState(); endRound(true);
+      }else{
+        GS.strikes++; GS.mask=mask(); sfxAll('bad');
+        if(GS.strikes>=8){ clearTimeout(pauseTimer); clearTimeout(drawEndTimer); GS.pause=false; GS.pauseStart=null; GS.drawerId=null; sendState(); endRound(false); }
+        else{ beginDrawSession(); toastAll('✕ wrong word guess ('+GS.strikes+'/8) — '+nameOf(GS.drawerId)+' draws the '+PARTS[GS.strikes-1]+'!'); }
       }
       break;}
     case 'continue':
-      if(from!==artist||GS.phase!=='playing'||!GS.pause) return;
+      if(from!==GS.drawerId||GS.phase!=='playing') return;
       continueTurn(); break;
   }
 }
-function continueTurn(){
-  clearTimeout(pauseTimer); GS.pause=false; GS.pauseStart=null; advanceTurn(); sendState();
-  toastAll('artist done — '+nameOf(GS.turnId)+', your turn!');
+function beginDrawSession(){
+  clearTimeout(pauseTimer); clearTimeout(drawEndTimer);
+  GS.drawerId=pickNextDrawer();
+  GS.pause=true; GS.pauseStart=Date.now();
+  pauseTimer=setTimeout(()=>{
+    if(GS.phase!=='playing'||!GS.pause||!GS.drawerId) return;
+    GS.pause=false; advanceTurn(); sendState();
+    toastAll('⏱ guessing open — '+nameOf(GS.turnId)+', your turn!');
+  },UNLOCK_SECONDS*1000);
+  drawEndTimer=setTimeout(()=>{
+    if(GS.phase!=='playing'||!GS.drawerId) return;
+    finishDrawSession(false);
+  },DRAW_SECONDS*1000);
+  sendState();
 }
+function finishDrawSession(early){
+  clearTimeout(pauseTimer); clearTimeout(drawEndTimer);
+  const stillBlocked=GS.pause;
+  GS.pause=false; GS.pauseStart=null; GS.drawerId=null;
+  if(stillBlocked) advanceTurn();
+  sendState();
+  toastAll(early? 'drawing done — '+nameOf(GS.turnId)+', your turn!' : 'pencils down — '+nameOf(GS.turnId)+' is up!');
+}
+function continueTurn(){ finishDrawSession(true); }
 function mask(){ return GS.word? GS.word.split('').map(c=>GS.guessed.includes(c)?c:'_').join(' ') : ''; }
-function advanceTurn(){ if(!order.length)return; const i=order.indexOf(GS.turnId); GS.turnId=order[(i+1)%order.length]; }
+function maskForFull(){ return GS.word? GS.word.split('').join(' ') : ''; }
+function syncRing(){
+  const ids=GS.players.map(p=>p.id);
+  guessRing=guessRing.filter(id=>ids.includes(id));
+  ids.forEach(id=>{ if(!guessRing.includes(id)) guessRing.splice(Math.floor(Math.random()*(guessRing.length+1)),0,id); });
+}
+function pickNextGuesser(drawer){
+  syncRing();
+  if(!guessRing.length) return null;
+  let start = guessNextId!=null? guessRing.indexOf(guessNextId) : Math.floor(Math.random()*guessRing.length);
+  if(start<0) start=0;
+  let id=null;
+  for(let n=0;n<guessRing.length;n++){
+    const cand=guessRing[(start+n)%guessRing.length];
+    if(cand!==GS.artistId && cand!==drawer){ id=cand; break; }
+  }
+  if(id==null) id=guessRing[start];
+  guessNextId=guessRing[(guessRing.indexOf(id)+1)%guessRing.length];
+  return id;
+}
+function advanceTurn(){ GS.turnId=pickNextGuesser(GS.drawerId); }
+function pickNextDrawer(){
+  const ids=GS.players.map(p=>p.id);
+  drawerQueue=drawerQueue.filter(i=>ids.includes(i));
+  if(!drawerQueue.length){ drawerQueue=shuffle(ids.filter(i=>i!==lastDrawerId)); if(!drawerQueue.length) drawerQueue=shuffle(ids); }
+  ids.forEach(i=>{ if(!drawerQueue.includes(i)) drawerQueue.push(i); });
+  lastDrawerId=drawerQueue.shift();
+  return lastDrawerId;
+}
 function checkWin(){
-  if(GS.word && GS.word.split('').every(c=>GS.guessed.includes(c))) endRound(true);
+  if(GS.word && GS.word.split('').every(c=>GS.guessed.includes(c))){
+    endByPlayer='THE TEAM';
+    sendAll({t:'confetti',by:'the team'});
+    toastAll('🎉 all letters found — the team wins!');
+    clearTimeout(pauseTimer); clearTimeout(drawEndTimer); GS.pause=false; GS.pauseStart=null; GS.drawerId=null; sendState(); endRound(true);
+    return true;
+  }
+  return false;
 }
 function endRound(win){
+  clearTimeout(pauseTimer); clearTimeout(drawEndTimer);
   GS.phase='over'; GS.win=win;
-  if(win) order.forEach(id=>wins[id]=(wins[id]||0)+1); else wins[GS.artistId]=(wins[GS.artistId]||0)+1;
+  if(win) GS.players.forEach(p=>{ if(p.id!==GS.artistId) wins[p.id]=(wins[p.id]||0)+1; }); else wins[GS.artistId]=(wins[GS.artistId]||0)+1;
   sendState();
 }
 function newRound(){
-  ops=[]; replayOps(); render(); hangOffset=0; hanging=false;
+  const pv=clampPivot({x:Math.round(675+(Math.random()-0.5)*140), y:115+Math.random()*55});
+  const seed=(Math.random()*1e9)|0;
+  ops=[{kind:'stamp',pivot:pv,seed}];
+  replayOps(); render(); hangOffset=0; hanging=false;
   const ids=GS.players.map(p=>p.id);
-  let pool=ids.filter(i=>i!==GS.artistId); if(!pool.length) pool=ids;
-  GS.artistId=pool[Math.floor(Math.random()*pool.length)];
-  GS.phase='picking'; GS.strikes=0; GS.guessed=[]; GS.mask=''; GS.word=''; GS.pivot=null; GS.win=null; GS.turnId=null; GS.pause=false; GS.pauseStart=null; clearTimeout(pauseTimer);
+  artistQueue=artistQueue.filter(i=>ids.includes(i));
+  if(!artistQueue.length){ artistQueue=shuffle(ids.filter(i=>i!==GS.artistId)); if(!artistQueue.length) artistQueue=ids.slice(); }
+  ids.forEach(i=>{ if(i!==GS.artistId && !artistQueue.includes(i)) artistQueue.push(i); });
+  GS.artistId=artistQueue.shift();
+  GS.phase='picking'; GS.strikes=0; GS.guessed=[]; GS.mask=''; GS.word=''; GS.pivot=pv; GS.win=null; GS.turnId=null; GS.drawerId=null; GS.pause=false; GS.pauseStart=null; clearTimeout(pauseTimer); clearTimeout(drawEndTimer);
   sendAll({t:'ops',ops}); sendState();
   toastAll('✎ '+nameOf(GS.artistId)+' is the word-setter this round!');
 }
@@ -532,7 +656,6 @@ function handle(d,from){
       const c=conns.find(c=>c.peer===from); if(c) c.name=String(d.name||'').toUpperCase();
       GS.players=buildPlayers();
       if(GS.phase==='playing'){
-        order=order.filter(x=>x!==from); order.push(from);
         if(!GS.turnId) GS.turnId=from;
         sendAll({t:'toast',msg:String(d.name||'').toUpperCase()+' jumped in mid-round — they\'ll guess after the current turn!'},from);
       }
@@ -544,6 +667,8 @@ function handle(d,from){
     case 'opStroke': ops.push(d.op); drawStroke(layerCtx(d.op.layer),d.op); render(); break;
     case 'seg': liveSeg(d); if(isHost) sendAll(d, from); break;
     case 'toast': toast(d.msg); break;
+    case 'confetti': launchConfetti(d.by||''); break;
+    case 'sfx': play(d.k); break;
     default: if(isHost) applyHost(d,from);
   }
 }
@@ -558,53 +683,134 @@ function liveSeg(d){
 
 /* ================= UI render ================= */
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
+
+/* ================= quirky sounds ================= */
+let AC=null;
+function audio(){
+  try{
+    if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended') AC.resume();
+    return AC;
+  }catch(_){ return null; }
+}
+function playGood(){
+  const ac=audio(); if(!ac) return;
+  const t0=ac.currentTime;
+  const ping=(f,start,dur)=>{
+    const o=ac.createOscillator(), g=ac.createGain();
+    o.type='sine'; o.frequency.value=f;
+    g.gain.setValueAtTime(0.0001,start);
+    g.gain.exponentialRampToValueAtTime(0.22,start+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,start+dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(start); o.stop(start+dur+0.02);
+  };
+  ping(987.77,t0,0.07);
+  ping(1318.51,t0+0.07,0.13);
+}
+function playBad(){
+  const ac=audio(); if(!ac) return;
+  const t0=ac.currentTime;
+  const o=ac.createOscillator(), g=ac.createGain();
+  o.type='sine';
+  o.frequency.setValueAtTime(220,t0);
+  o.frequency.exponentialRampToValueAtTime(180,t0+0.12);
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.exponentialRampToValueAtTime(0.18,t0+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+0.13);
+  o.connect(g); g.connect(ac.destination);
+  o.start(t0); o.stop(t0+0.16);
+}
+function play(k){ k==='good'? playGood() : playBad(); }
+function sfxAll(k){ sendAll({t:'sfx',k}); play(k); }
+
+function launchConfetti(by){
+  const box=document.createElement('div'); box.className='confettiBox'; document.body.appendChild(box);
+  const cols=['#b43a2a','#e8843c','#d9a53b','#e6c45f','#3c7837','#2c4a8f','#7a2d7d','#8fd3c7','#f2c2b3','#c9564f'];
+  for(let i=0;i<150;i++){
+    const piece=document.createElement('i');
+    const s=6+Math.random()*9;
+    piece.style.left=(Math.random()*100)+'vw';
+    piece.style.width=s+'px'; piece.style.height=(s*0.5)+'px';
+    piece.style.background=cols[Math.floor(Math.random()*cols.length)];
+    piece.style.animationDelay=(Math.random()*0.7)+'s';
+    piece.style.animationDuration=(2.4+Math.random()*2.0)+'s';
+    box.appendChild(piece);
+  }
+  const lab=document.createElement('div'); lab.className='confettiLab';
+  lab.textContent='🎉 '+(by?String(by).toUpperCase()+' ':'')+'NAILED IT! 🎉';
+  box.appendChild(lab);
+  setTimeout(()=>box.remove(),4600);
+}
 function renderState(){
+  cv.style.cursor = canDraw()? 'crosshair' : 'default';
   const meArtist = GS.artistId===myId;
+  const meDrawer = GS.phase==='playing'&&GS.drawerId===myId;
+  const meGuesser = GS.phase==='playing'&&!meArtist&&!meDrawer;
+  refreshCheer();
   $('roomChip').classList.toggle('hidden',!roomCode&&!conns.length);
   if(roomCode) $('roomCodeTxt').textContent=roomCode;
   $('roundTxt').textContent = GS.round? '— round '+GS.round : '';
   $('deskHost').classList.toggle('hidden',!(isHost&&GS.phase==='lobby'));
-  $('deskArtist').classList.toggle('hidden',!(meArtist&&(GS.phase==='picking'||GS.phase==='playing')));
-  $('deskGuess').classList.toggle('hidden',!(GS.phase==='playing'&&!meArtist));
-  $('deskWait').classList.toggle('hidden',!((GS.phase==='picking'&&!meArtist)||(GS.phase==='lobby'&&!isHost)));
+  $('deskArtist').classList.toggle('hidden',!((meArtist&&GS.phase==='picking')||meDrawer));
+  $('deskGuess').classList.toggle('hidden',!meGuesser);
+  $('deskWait').classList.toggle('hidden',!((GS.phase==='picking'&&!meArtist)||(GS.phase==='lobby'&&!isHost)||(GS.phase==='playing'&&meArtist&&!meDrawer)));
   $('partsPanel').classList.toggle('hidden',!(GS.phase==='playing'||GS.phase==='over'));
   if(GS.phase==='lobby'&&!isHost) $('waitMsg').textContent='waiting for the host to start the game…';
-  if(GS.phase==='picking'&&!meArtist) $('waitMsg').textContent='ssssh — '+nameOf(GS.artistId)+' is drawing the gallows &amp; choosing the word…';
-  if(meArtist&&(GS.phase==='picking'||GS.phase==='playing')){
+  if(GS.phase==='picking'&&!meArtist) $('waitMsg').textContent='ssssh — '+nameOf(GS.artistId)+' is choosing the secret word…';
+  if((meArtist&&GS.phase==='picking')||meDrawer){
+    $('artistTitle').textContent = GS.phase==='playing'
+      ? (meArtist? "You're the word-setter — draw the part!" : 'Your turn to draw a body part!')
+      : "You're the word-setter!";
     $('wordPick').classList.toggle('hidden',GS.phase!=='picking');
     $('artistPlayHint').classList.toggle('hidden',GS.phase!=='playing');
-    $('contBtn').classList.toggle('hidden',!(GS.phase==='playing'&&GS.pause));
-    if(GS.phase==='playing'){
-      if(GS.pause){ pauseTick(); if(!pauseCountdown) pauseCountdown=setInterval(pauseTick,1000); }
-      else{
-        if(pauseCountdown){ clearInterval(pauseCountdown); pauseCountdown=null; }
-        $('artistPlayHint').innerHTML='your word: <b class="secretWord" title="hover to peek">'+GS.word+'</b> <span class="tiny">(peek)</span><br>next wrong guess → draw the <b>'+ (GS.strikes<8?PARTS[GS.strikes]:'—') +'</b>';
-      }
-    }
-    $('stampHint').textContent = GS.pivot? 'gallows stamped — the noose is the swing pivot.' : 'stamp the gallows — the noose ring is the swing pivot. it fills the whole page height.';
-    $('blankBtn').classList.toggle('hidden',GS.phase!=='picking'||!!GS.pivot);
+    $('contBtn').classList.toggle('hidden',!meDrawer);
+$('stampHint').textContent = 'the gallows is placed automatically — ink the part on the canvas, or hit "finished drawing" early!';
   }
-  if(GS.phase==='playing'&&!meArtist){
+  if(GS.phase==='playing'&&meArtist&&!meDrawer){
+    $('waitMsg').innerHTML = GS.pause
+      ? 'your word: <b class="secretWord" title="hover to peek">'+GS.word+'</b> — '+nameOf(GS.drawerId)+' is drawing the <b>'+PARTS[Math.max(0,GS.strikes-1)]+'</b>'
+      : 'your word: <b class="secretWord" title="hover to peek">'+GS.word+'</b> <span class="tiny">(peek)</span> — sit tight while the room guesses!';
+  }
+  if(meGuesser){
     $('mask').textContent=GS.mask||'_ _ _';
     $('turnLbl').innerHTML = GS.pause
-      ? 'the artist is drawing the <b>'+PARTS[Math.max(0,GS.strikes-1)]+'</b> — stay tuned…'
-      : (GS.turnId===myId? '<b>your turn — pick a letter!</b>' : 'now guessing: <b>'+nameOf(GS.turnId)+'</b>');
+      ? nameOf(GS.drawerId)+' is drawing the <b>'+PARTS[Math.max(0,GS.strikes-1)]+'</b> — guessing resumes in <b>'+UNLOCK_SECONDS+'s</b>…'
+      : (GS.turnId===myId? '<b>your turn — pick a letter or guess the whole word!</b>' : 'now guessing: <b>'+nameOf(GS.turnId)+'</b>');
     $('guessTitle').textContent='Guess the word';
+    $('wordGuessIn').disabled = false;
+    $('wordGuessBtn').disabled = false;
+  }
+  if(GS.phase==='playing'&&(GS.pause||meDrawer)){
+    drawTick(); if(!pauseCountdown) pauseCountdown=setInterval(drawTick,1000);
+  }else{
+    if(pauseCountdown){ clearInterval(pauseCountdown); pauseCountdown=null; }
   }
   buildKeys();
   $('strikeTxt').textContent='✕ '+GS.strikes+' / 8';
   $('parts').innerHTML=PARTS.map((p,i)=>'<span class="'+(i<GS.strikes?'done':(i===GS.strikes&&GS.phase==='playing'?'next':''))+'">'+p+'</span>').join('');
-  $('players').innerHTML=GS.players.map(p=>'<span class="chip'+(p.id===GS.artistId?' artist':'')+'">'+(p.id===GS.artistId?'✎ ':'')+esc(p.name)+(p.wins?' ★'+p.wins:'')+(p.id===myId?' (you)':'')+'</span>').join('');
-  if(GS.phase==='over') showEnd(); else $('endOv').classList.add('hidden');
+  $('players').innerHTML=GS.players.map(p=>{
+    const isArt=p.id===GS.artistId, isDraw=GS.phase==='playing'&&p.id===GS.drawerId;
+    return '<span class="chip'+(isArt?' artist':'')+(isDraw?' drawer':'')+'">'+(isArt?'✎ ':isDraw?'✏ ':'')+esc(p.name)+(p.wins?' ★'+p.wins:'')+(p.id===myId?' (you)':'')+'</span>';
+  }).join('');
+  if(GS.phase==='over'){ $('endDim').style.display = GS.win===true ? 'block' : 'none'; showEnd(); } else { $('endDim').style.display='none'; $('endOv').classList.add('hidden'); }
   render();
 }
 const esc=s=>String(s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
-function pauseTick(){
-  if(!GS.pause||GS.phase!=='playing'){ clearInterval(pauseCountdown); pauseCountdown=null; return; }
-  const left=Math.max(0,10-Math.floor((Date.now()-(GS.pauseStart||Date.now()))/1000));
-  if(GS.artistId===myId) $('artistPlayHint').innerHTML='draw the <b>'+PARTS[Math.min(GS.strikes-1,PARTS.length-1)]+'</b> — <b>'+left+'s</b> left! (or hit <b>finished drawing</b> early)';
-  else $('turnLbl').innerHTML='the artist is drawing the <b>'+PARTS[Math.max(0,GS.strikes-1)]+'</b> — <b>'+left+'s</b> left…';
-  if(left<=0){ clearInterval(pauseCountdown); pauseCountdown=null; }
+function drawTick(){
+  if(GS.phase!=='playing'){ clearInterval(pauseCountdown); pauseCountdown=null; return; }
+  const isSelf=GS.drawerId===myId;
+  if(!GS.pause&&!isSelf){ clearInterval(pauseCountdown); pauseCountdown=null; return; }
+  const el=Math.max(0,Math.floor((Date.now()-(GS.pauseStart||Date.now()))/1000));
+  const part=PARTS[Math.min(GS.strikes-1,PARTS.length-1)];
+  if(isSelf){
+    const left=Math.max(0,DRAW_SECONDS-el);
+    $('artistPlayHint').innerHTML='draw the <b>'+part+'</b> — <b>'+left+'s</b> left! <span class="muted">'+drawCheer+' · (or hit <b>finished drawing</b> early)</span>';
+  }else{
+    const left=Math.max(0,UNLOCK_SECONDS-el);
+    $('turnLbl').innerHTML=nameOf(GS.drawerId)+' is drawing the <b>'+part+'</b> — guessing resumes in <b>'+left+'s</b>…';
+    if(GS.artistId===myId) $('waitMsg').innerHTML='your word: <b class="secretWord" title="hover to peek">'+GS.word+'</b> — '+nameOf(GS.drawerId)+' is drawing the <b>'+part+'</b> — resumes in <b>'+left+'s</b>';
+  }
 }
 function buildKeys(){
   const kb=$('kb'); if(kb.childElementCount) { updateKeys(); return; }
@@ -614,8 +820,6 @@ function buildKeys(){
       const b=document.createElement('button'); b.className='key'; b.textContent=ch; b.dataset.l=ch;
       b.onclick=()=>{
         if(GS.phase!=='playing') return;
-        if(GS.pause){ toast('the artist is finishing the figure — wait…'); return; }
-        if(GS.turnId!==myId){ toast('not your turn — '+nameOf(GS.turnId)+' is up.'); return; }
         act({t:'guess',letter:ch});
       };
       r.appendChild(b);
@@ -625,10 +829,10 @@ function buildKeys(){
   updateKeys();
 }
 function updateKeys(){
-  const disabled = GS.pause||!(GS.phase==='playing'&&GS.turnId===myId);
   document.querySelectorAll('.key').forEach(k=>{
-    k.classList.toggle('used',GS.guessed.includes(k.dataset.l));
-    k.disabled=disabled||GS.guessed.includes(k.dataset.l);
+    const used=GS.guessed.includes(k.dataset.l);
+    k.classList.toggle('used',used);
+    k.disabled=used;
   });
 }
 function showEnd(){
@@ -636,6 +840,8 @@ function showEnd(){
   overRoundHandled=GS.round;
   $('endTitle').textContent = GS.win? 'Hooray!!' : 'Hanged!';
   $('endWord').textContent = 'the word was '+GS.word;
+  $('endBy').textContent = GS.win? '🎉 '+endByPlayer+' guessed it!' : '';
+  $('endSub').style.display = GS.win? 'block' : 'none';
   $('nextBtn').classList.toggle('hidden',!isHost);
   $('endWait').classList.toggle('hidden',isHost);
   if(GS.win){ $('endOv').classList.remove('hidden'); }
@@ -686,23 +892,17 @@ function runHang(){
 }
 
 /* ================= canvas input (drawing) ================= */
-const canDraw=()=>GS.artistId===myId&&(GS.phase==='picking'||GS.phase==='playing');
-const curLayer=()=>GS.phase==='picking'?'setup':'figure';
+const canDraw=()=>GS.phase==='playing'&&GS.drawerId===myId;
+const curLayer=()=>'figure';
 function cvPos(e){ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)*W/r.width, y:(e.clientY-r.top)*H/r.height}; }
 cv.addEventListener('pointerdown',e=>{
   if(!canDraw()) return;
   cv.setPointerCapture(e.pointerId);
   const p=cvPos(e);
-  if(tool==='stamp'){
-    if(GS.pivot){ toast('gallows already stamped — undo it to move the noose pivot.'); return; }
-    act({t:'stamp',pivot:clampPivot(p),seed:(Math.random()*1e9)|0});
-    setTool('brush'); return;
-  }
   drawing=true; curPts=[p];
 });
 cv.addEventListener('pointermove',e=>{
   const p=cvPos(e); ghost=p;
-  if(tool==='stamp') render();
   if(!drawing) return;
   const last=curPts[curPts.length-1];
   if(Math.hypot(p.x-last.x,p.y-last.y)<2) return;
@@ -721,14 +921,11 @@ function setTool(t){
   tool=t;
   $('tBrush').classList.toggle('on',t==='brush');
   $('tEraser').classList.toggle('on',t==='eraser');
-  $('tStamp').classList.toggle('on',t==='stamp');
   render();
 }
 $('tBrush').onclick=()=>setTool('brush');
 $('tEraser').onclick=()=>setTool('eraser');
-$('tStamp').onclick=()=>setTool('stamp');
 $('undoBtn').onclick=()=>act({t:'undo'});
-$('blankBtn').onclick=()=>act({t:'blank'});
 document.querySelectorAll('.swatch').forEach(s=>s.onclick=()=>{
   colour=s.dataset.c; document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('on')); s.classList.add('on'); setTool('brush');
 });
@@ -753,6 +950,16 @@ $('joinBtn').onclick=()=>{
     c.on('open',()=>{ enterGame(); c.send({t:'join',name:myName}); });
   });
 };
+$('nameIn').addEventListener('keydown',e=>{
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  if($('codeIn').value.trim()) $('joinBtn').click(); else $('hostBtn').click();
+});
+$('codeIn').addEventListener('keydown',e=>{
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  $('joinBtn').click();
+});
 function enterGame(){
   $('lobby').classList.add('hidden'); $('game').classList.remove('hidden');
   if(isHost){ GS.players=buildPlayers(); }
@@ -771,13 +978,23 @@ $('surpriseBtn').onclick=()=>{ $('wordIn').value=WORDS[Math.floor(Math.random()*
 $('startGuessBtn').onclick=()=>{
   const w=$('wordIn').value.trim();
   if(!/^[A-Za-z]{3,12}$/.test(w)) return toast('word must be 3–12 letters, no spaces/numbers.');
-  if(!GS.pivot) return toast('stamp the gallows first — the game needs the noose pivot!');
   $('wordIn').value=''; act({t:'setword',word:w}); act({t:'startguess'});
 };
 $('contBtn').onclick=()=>act({t:'continue'});
 const wordIn=$('wordIn');
 wordIn.addEventListener('mouseenter',()=>{ if(wordIn.value) wordIn.type='text'; });
 wordIn.addEventListener('mouseleave',()=>{ wordIn.type='password'; });
+const wordGuessIn=$('wordGuessIn');
+$('wordGuessBtn').onclick=()=>{
+  if(GS.phase!=='playing') return;
+  const w=wordGuessIn.value.trim();
+  if(!w) return;
+  wordGuessIn.value='';
+  act({t:'guessword',word:w});
+};
+wordGuessIn.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); $('wordGuessBtn').click(); }
+});
 
 /* ================= layout ================= */
 function fitBoard(){
@@ -787,6 +1004,7 @@ function fitBoard(){
   cv.style.width='100%'; cv.style.height='100%';
 }
 addEventListener('resize',fitBoard);
+addEventListener('pointerdown',()=>audio(),{passive:true});
 buildKeys(); render();
 </script>
 </body>

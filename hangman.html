@@ -308,7 +308,7 @@
     <p><b>Hosting.</b> The host starts a room and shares the 5-digit code (✂ copy). Everyone joins from their own computer.</p>
     <p><b>Fair word-setter rotation.</b> Players take it in turns to be the word-setter &amp; artist — a fair rotation means everyone gets a turn before anyone repeats, instead of the same person being picked twice. They pick a secret word and draw the hanging figure. The word box hides what you type — hover to peek and check your spelling, but keep your screen away from other players!</p>
     <p><b>Guess one-by-one.</b> The guessing team takes turns — the game taps each player in turn for one letter, and that turn order <i>carries on across rounds</i>, so nobody gets asked twice while someone else is still waiting for a guess.</p>
-    <p><b>Drawing.</b> The gallows is placed automatically each round (the noose is the swing pivot). With each wrong guess a player is picked on a <i>fair rotation</i> to draw the next body part — everyone gets a turn before anyone is picked again. The chosen drawer gets 20 seconds to draw (and can hit "finished drawing" early), while the rest of the room can start guessing again after just 6 seconds.</p>
+    <p><b>Drawing.</b> The gallows is placed automatically each round (the noose is the swing pivot). With each wrong guess a player is picked on a <i>fair rotation</i> to draw the next body part — everyone gets a turn before anyone is picked again. The chosen drawer gets 15 seconds to draw (and can hit "finished drawing" early), while the rest of the room can start guessing again after just 6 seconds.</p>
     <p><b>Win!</b> All letters found and you take the round — the host starts the next one.</p>
     <p><b>Lose.</b> Wrong 8 times and the drawing drops &amp; swings from the noose — the setter wins the round.</p>
     <div class="centre"><button class="primary" id="helpClose">got it!</button></div>
@@ -318,7 +318,7 @@
 <script>
 /* ================= utils ================= */
 const W=960, H=640, PREFIX='hangsmth-';
-const DRAW_SECONDS=20, UNLOCK_SECONDS=6;
+const DRAW_SECONDS=15, UNLOCK_SECONDS=6;
 const PARTS=['head','body','left arm','right arm','left leg','right leg','face & hands','the drop!'];
 const WORDS=['pencil','galaxy','banana','wizard','jungle','rocket','muffin','castle','dragon','pickle','monkey','guitar','island','kitten','lantern','marble','noodle','orange','pirate','quilt','rabbit','saddle','tomato','umbrella','violin','walrus','yogurt','zephyr','anchor','basket','cactus','donkey','feather','goblin','hammer','icicle','jigsaw','kettle','lizard','magnet'];
 const $=id=>document.getElementById(id);
@@ -575,20 +575,20 @@ function syncRing(){
 function pickNextGuesser(drawer){
   syncRing();
   if(!guessRing.length) return null;
-  let start = guessNextId!=null? guessRing.indexOf(guessNextId) : Math.floor(Math.random()*guessRing.length);
-  if(start<0) start=0;
-  let id=null;
-  for(let n=0;n<guessRing.length;n++){
-    const cand=guessRing[(start+n)%guessRing.length];
-    if(cand!==GS.artistId && cand!==drawer){ id=cand; break; }
-  }
-  if(id==null) id=guessRing[start];
-  guessNextId=guessRing[(guessRing.indexOf(id)+1)%guessRing.length];
+  let pool=guessRing.filter(id=>id!==GS.artistId && id!==drawer);
+  if(!pool.length) pool=guessRing.filter(id=>id!==GS.artistId);
+  if(!pool.length) pool=guessRing.slice();
+  let start = guessNextId!=null? pool.indexOf(guessNextId) : -1;
+  if(start<0) start=Math.floor(Math.random()*pool.length);
+  const id=pool[start];
+  guessNextId=pool[(start+1)%pool.length];
   return id;
 }
 function advanceTurn(){ GS.turnId=pickNextGuesser(GS.drawerId); }
 function pickNextDrawer(){
   const ids=GS.players.map(p=>p.id);
+  const nonArtists=ids.filter(i=>i!==GS.artistId);
+  if(nonArtists.length<=1){ lastDrawerId=GS.artistId; return GS.artistId; }
   drawerQueue=drawerQueue.filter(i=>ids.includes(i));
   if(!drawerQueue.length){ drawerQueue=shuffle(ids.filter(i=>i!==lastDrawerId)); if(!drawerQueue.length) drawerQueue=shuffle(ids); }
   ids.forEach(i=>{ if(!drawerQueue.includes(i)) drawerQueue.push(i); });
@@ -894,7 +894,11 @@ function runHang(){
 /* ================= canvas input (drawing) ================= */
 const canDraw=()=>GS.phase==='playing'&&GS.drawerId===myId;
 const curLayer=()=>'figure';
-function cvPos(e){ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)*W/r.width, y:(e.clientY-r.top)*H/r.height}; }
+function cvPos(e){
+  const r=cv.getBoundingClientRect();
+  const w=cv.clientWidth||r.width, h=cv.clientHeight||r.height;
+  return {x:(e.clientX-r.left-cv.clientLeft)*W/w, y:(e.clientY-r.top-cv.clientTop)*H/h};
+}
 cv.addEventListener('pointerdown',e=>{
   if(!canDraw()) return;
   cv.setPointerCapture(e.pointerId);
